@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-04-22
+
+### Added (Agregado)
+
+#### Docker & Deployment
+- `bot/Dockerfile` - Bot container with Node + Chromium for WPPConnect
+- `dashboard/Dockerfile` - Multi-stage build with nginx for React SPA
+- `docker-compose.production.yml` - Production compose for Railway
+- `scripts/build.sh` - Build & push script for Docker Hub
+- `DEPLOY.md` - Railway deployment guide
+
+#### Security
+- `SECURITY.md` - Security policy document (ES/EN)
+- Security vulnerabilities documented with workarounds
+- pnpm overrides for known issues
+
+---
+
 ## [1.0.0] - 2026-04-22
 
 ### Added (Agregado)
