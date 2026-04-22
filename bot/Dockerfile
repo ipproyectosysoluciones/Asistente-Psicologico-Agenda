@@ -1,23 +1,33 @@
-FROM node:20-bookworm
+FROM node:20-alpine
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    libsodium-dev \
-    libwebp-dev \
-    wget \
-    openssl \
-    libssl3 \
-    && rm -rf /var/lib/apt/lists/*
+# Instalar dependencias del sistema (Chrome para WPPConnect)
+RUN apk add --no-cache \
+    chromium \
+    ca-certificates \
+    ttf-freefont \
+    font-noto \
+    font-noto-emoji
 
-COPY package.json pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install
+# Configurar Chrome para modo headless
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    CHROME_BIN=/usr/bin/chromium
 
-COPY . .
+COPY bot/package.json bot/pnpm-lock.yaml ./
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod
 
+COPY bot/ ./
+
+# Crear directorio de tokens
+RUN mkdir -p /app/tokens
+
+# Exponer puerto
 EXPOSE 3000
 
-CMD ["node", "src/index.js"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+
+CMD ["pnpm", "start"]
