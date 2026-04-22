@@ -1,0 +1,88 @@
+{
+  "name": "No-Show - Marcar Citas Vencidas",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hours": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT\n  a.id,\n  a.scheduled_at,\n  p.first_name,\n  p.email,\n  a.status\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at < NOW() - INTERVAL '30 minutes'",
+        "options": {}
+      },
+      "id": "get-no-show",
+      "name": "PostgreSQL - Citas Vencidas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE appointments\nSET status = 'no_show',\n       updated_at = NOW()\nWHERE id = {{ $json.id }}",
+        "options": {}
+      },
+      "id": "mark-noshow",
+      "name": "PostgreSQL - Marcar No-Show",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.email }}",
+        "subject": "📋 Cita marcada como inasistencia",
+        "body": "=Hola {{ $json.first_name }},\n\nTu cita del {{ $json.scheduled_at }} fue marcada como inasistencia (no_show) porque no te presentaste.\n\nSi crees que es un error o deseas reprogramar, contactanos.\n\nSaludos",
+        "options": {}
+      },
+      "id": "notify-noshow",
+      "name": "Gmail - Notificar No-Show",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Citas Vencidas",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Citas Vencidas": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Marcar No-Show",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Marcar No-Show": {
+      "main": [[
+        {
+          "node": "Gmail - Notificar No-Show",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "no-show"
+}

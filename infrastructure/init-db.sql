@@ -430,3 +430,147 @@ VALUES (
     'PSY-001',
     'MX'
 );
+
+-- ============================================================
+-- TABLE: knowledge_base (Documents)
+-- ============================================================
+CREATE TABLE knowledge_base (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    psychologist_id UUID REFERENCES psychologists(id) ON DELETE CASCADE,
+    
+    title VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    file_path TEXT NOT NULL,
+    description TEXT,
+    tags TEXT[] DEFAULT '{}',
+    
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_knowledge_category ON knowledge_base(category);
+CREATE INDEX idx_knowledge_psychologist ON knowledge_base(psychologist_id);
+
+-- Trigger for updated_at
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER knowledge_base_updated_at
+    BEFORE UPDATE ON knowledge_base
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- LEADS & CAMPAIGNS
+-- ============================================================
+
+CREATE TABLE leads (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    psychologist_id UUID REFERENCES psychologists(id) ON DELETE CASCADE,
+    
+    -- Contact
+    first_name VARCHAR(255) NOT NULL,
+    last_name VARCHAR(255),
+    email VARCHAR(255),
+    phone VARCHAR(50) NOT NULL,
+    source VARCHAR(100) DEFAULT 'web',
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'new',
+    -- new | contacted | qualified | converted | lost
+    
+    -- Score
+    lead_score INT DEFAULT 0,
+    tags TEXT[],
+    notes TEXT,
+    
+    -- Conversión
+    converted_to_patient_id UUID REFERENCES patients(id),
+    converted_at TIMESTAMP,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_leads_psychologist ON leads(psychologist_id);
+CREATE INDEX idx_leads_status ON leads(status);
+CREATE INDEX idx_leads_phone ON leads(phone);
+
+CREATE TABLE campaigns (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    psychologist_id UUID REFERENCES psychologists(id) ON DELETE CASCADE,
+    
+    -- Campaign
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    campaign_type VARCHAR(50) NOT NULL,
+    -- whatsapp | email | sms
+    
+    -- Content
+    template TEXT NOT NULL,
+    media_url VARCHAR(500),
+    
+    -- Timing
+    scheduled_at TIMESTAMP,
+    send_now BOOLEAN DEFAULT true,
+    
+    -- Filters
+    target_leads_status TEXT[] DEFAULT ARRAY['new'],
+    target_tags TEXT[],
+    
+    -- Stats
+    total_recipients INT DEFAULT 0,
+    sent_count INT DEFAULT 0,
+    delivered_count INT DEFAULT 0,
+    opened_count INT DEFAULT 0,
+    clicked_count INT DEFAULT 0,
+    
+    -- Status
+    status VARCHAR(50) DEFAULT 'draft',
+    -- draft | scheduled | sending | completed | paused
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP,
+    deleted_at TIMESTAMP
+);
+
+CREATE INDEX idx_campaigns_psychologist ON campaigns(psychologist_id);
+CREATE INDEX idx_campaigns_status ON campaigns(status);
+
+CREATE TABLE campaign_leads (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    campaign_id UUID REFERENCES campaigns(id) ON DELETE CASCADE,
+    lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
+    
+    status VARCHAR(50) DEFAULT 'pending',
+    -- pending | sent | delivered | opened | clicked | failed
+    
+    sent_at TIMESTAMP,
+    delivered_at TIMESTAMP,
+    opened_at TIMESTAMP,
+    clicked_at TIMESTAMP,
+    error_message TEXT,
+    
+    UNIQUE(campaign_id, lead_id)
+);
+
+CREATE INDEX idx_campaign_leads_campaign ON campaign_leads(campaign_id);
+CREATE INDEX idx_campaign_leads_lead ON campaign_leads(lead_id);
+
+CREATE TRIGGER leads_updated_at
+    BEFORE UPDATE ON leads
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+CREATE TRIGGER campaigns_updated_at
+    BEFORE UPDATE ON campaigns
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();

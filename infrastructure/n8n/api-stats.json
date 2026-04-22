@@ -1,0 +1,52 @@
+{
+  "name": "API - Stats",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "stats",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE status IN ('scheduled', 'confirmed') AND scheduled_at::date = CURRENT_DATE)::int AS today_appointments,\n  COUNT(*) FILTER (WHERE status = 'completed' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_completed,\n  COUNT(*) FILTER (WHERE status = 'no_show' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_noshow,\n  COUNT(*) FILTER (WHERE status = 'cancelled' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_cancelled,\n  (SELECT COUNT(*)::int FROM patients WHERE deleted_at IS NULL) AS total_patients,\n  (SELECT COUNT(*)::int FROM patients WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()))::int AS new_patients_month",
+        "options": {}
+      },
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ $json }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-stats"
+}

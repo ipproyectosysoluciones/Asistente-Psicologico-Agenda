@@ -17,40 +17,44 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT * FROM appointments WHERE scheduled_at = '{{$json.body.scheduled_at}}' AND status != 'cancelled'",
+        "query": "=SELECT COUNT(*)::int AS conflicts\nFROM appointments\nWHERE psychologist_id = (SELECT id FROM psychologists LIMIT 1)\n  AND status NOT IN ('cancelled', 'no_show')\n  AND deleted_at IS NULL\n  AND scheduled_at < '{{ $json.body.scheduled_end }}'\n  AND scheduled_at + (duration_minutes || ' minutes')::INTERVAL + '10 minutes'::INTERVAL > '{{ $json.body.scheduled_at }}'",
         "options": {}
       },
       "id": "check-availability",
       "name": "PostgreSQL - Verificar Disponibilidad",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1.1,
-      "position": [500, 150]
+      "position": [500, 300]
     },
     {
       "parameters": {
         "rule": {
           "conditions": {
             "options": {
-              "caseSensitive": true
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
             },
             "conditions": [
               {
-                "value1": "={{$json.number}}",
-                "operation": "greater",
-                "value2": "=0"
+                "id": "condition-conflicts",
+                "name": "Condition",
+                "value1": "={{ $json.conflicts }}",
+                "operation": "equals",
+                "value2": 0
               }
-            ]
+            ],
+            "combinator": "and"
           },
-          "combinator": "and"
+          "options": {}
         },
         "options": {}
       },
       "id": "if-available",
       "name": "IF - Disponible?",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [750, 300],
-      "continueOnFail": false
+      "typeVersion": 2,
+      "position": [750, 300]
     },
     {
       "parameters": {
@@ -62,46 +66,44 @@
       "name": "PostgreSQL - Crear Cita",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1.1,
-      "position": [1000, 150]
+      "position": [1000, 300]
     },
     {
       "parameters": {
         "calendar": "primary",
-        "title": "Consulta - {{$json.body.patient_name}}",
-        "start": "{{$json.body.scheduled_at}}",
-        "end": "{{$json.body.scheduled_end}}",
-        "options": {
-          "location": "Google Meet"
-        }
+        "title": "=Consulta - {{ $json.body.patient_name }}",
+        "start": "={{ $json.body.scheduled_at }}",
+        "end": "={{ $json.body.scheduled_end }}",
+        "options": {}
       },
       "id": "create-calendar",
       "name": "Google Calendar - Crear Evento",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.1,
-      "position": [1000, 350]
+      "position": [1000, 500]
     },
     {
       "parameters": {
-        "to": "{{$json.body.email}}",
-        "subject": "Cita Confirmada - Asistente Psicológico",
-        "body": "Hola {{$json.body.patient_name}},\n\nTu cita ha sido confirmada:\n📅 Fecha: {{$json.body.scheduled_date}}\n⏰ Hora: {{$json.body.scheduled_time}}\n\nLink de Google Meet: {{$json.meet_link}}\n\nPara cancelar o reprogramar, contactanos con 24h de anticipación.\n\nSaludos,\nAsistente Psicológico",
+        "to": "={{ $json.body.email }}",
+        "subject": "✅ Tu cita ha sido confirmada",
+        "body": "=Hola {{ $json.body.patient_name }},\n\nTu cita ha sido confirmada:\n📅 Fecha: {{ $json.body.scheduled_date }}\n⏰ Hora: {{ $json.body.scheduled_time }}\n{{ $json.meet_link ? '\n🔗 Meet: ' + $json.meet_link : '' }}\n\nPara cancelar o reprogramar, contactanos con 24h de anticipación.\n\nSaludos",
         "options": {}
       },
       "id": "send-confirmation",
-      "name": "Email - Confirmación",
+      "name": "Gmail - Confirmación",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [1250, 150]
+      "position": [1250, 300]
     },
     {
       "parameters": {
-        "to": "{{$json.body.email}}",
-        "subject": "Horario No Disponible",
-        "body": "Hola {{$json.body.patient_name}},\n\nLamentamos informarte que el horario solicitado no está disponible.\n\nPor favor, prueba con otro horario.\n\nSaludos,\nAsistente Psicológico",
+        "to": "={{ $json.body.email }}",
+        "subject": "⚠️ Horario No Disponible",
+        "body": "=Hola {{ $json.body.patient_name }},\n\nLamentamos informarte que el horario solicitado no está disponible.\n\nPor favor, prueba con otro horario.\n\nSaludos",
         "options": {}
       },
       "id": "send-unavailable",
-      "name": "Email - No Disponible",
+      "name": "Gmail - No Disponible",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
       "position": [1250, 450]

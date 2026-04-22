@@ -1,0 +1,182 @@
+{
+  "name": "Confirmación - Respuestas de Pacientes",
+  "nodes": [
+    {
+      "parameters": {
+        "mailimap": {
+          "sync": " Polling",
+          "folder": "INBOX",
+          "forceFetch": true,
+          "jsonOutput": false,
+          "propertyNames": {
+            "enum": "name"
+          },
+          "credentialsData": {
+            "oauthTokenApi": {}
+          },
+          "mailboxId": []
+        },
+        "options": {
+          "keepMessages": true,
+          "filter": {
+            "subject": {
+              "keywords": [
+                "CONFIRMAR",
+                "CANCELAR",
+                "recordatorio",
+                "cita"
+              ]
+            }
+          }
+        }
+      },
+      "id": "email-trigger",
+      "name": "Email Trigger",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "=const body = $input.item.json.text || $input.item.json.body || '';\nconst normalized = body.toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n$input.item.json.action = null;\n\nif (normalized.includes('CONFIRMAR')) {\n  $input.item.json.action = 'confirmar';\n} else if (normalized.includes('CANCELAR')) {\n  $input.item.json.action = 'cancelar';\n}\n\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "parse-action",
+      "name": "Code - Parsear Acción",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false
+            },
+            "conditions": [
+              {
+                "id": "condition-confirm",
+                "name": "Condition",
+                "value1": "={{ $json.action }}",
+                "operation": "equals",
+                "value2": "confirmar"
+              }
+            ],
+            "combinator": "or"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-confirm",
+      "name": "IF - Confirmar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE appointments\nSET status = 'confirmed',\n       updated_at = NOW()\nWHERE id = '{{ $json.appointmentId }}'",
+        "options": {}
+      },
+      "id": "confirmar",
+      "name": "PostgreSQL - Confirmar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [1000, 100]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.from }}",
+        "subject": "✅ Asistencia confirmada",
+        "body": "=Tu asistencia ha sido confirmada.\n\nNos vemos pronto.",
+        "options": {}
+      },
+      "id": "email-confirmed",
+      "name": "Gmail - Confirmado",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1250, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE appointments\nSET status = 'cancelled',\n       updated_at = NOW()\nWHERE id = '{{ $json.appointmentId }}'",
+        "options": {}
+      },
+      "id": "cancelar",
+      "name": "PostgreSQL - Cancelar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.from }}",
+        "subject": "❌ Cita cancelada",
+        "body": "=Tu cita ha sido cancelada.\n\nCuando desees reprogramar, contáctanos.",
+        "options": {}
+      },
+      "id": "email-cancelled",
+      "name": "Gmail - Cancelado",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    }
+  ],
+  "connections": {
+    "Email Trigger": {
+      "main": [[
+        {
+          "node": "Code - Parsear Acción",
+          "type": "main"
+        }
+      ]]
+    },
+    "Code - Parsear Acción": {
+      "main": [[
+        {
+          "node": "IF - Confirmar",
+          "type": "main"
+        }
+      ]]
+    },
+    "IF - Confirmar": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Confirmar",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "node": "PostgreSQL - Cancelar",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Confirmar": {
+      "main": [[
+        {
+          "node": "Gmail - Confirmado",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Cancelar": {
+      "main": [[
+        {
+          "node": "Gmail - Cancelado",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "confirmacion"
+}

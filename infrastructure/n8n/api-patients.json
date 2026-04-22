@@ -1,0 +1,52 @@
+{
+  "name": "API - Patients",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "patients",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT\n  p.id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  p.date_of_birth,\n  p.gender,\n  p.consent_status,\n  p.first_appointment_at,\n  p.last_appointment_at,\n  p.total_sessions,\n  p.created_at,\n  COUNT(a.id)::int AS total_appointments\nFROM patients p\nLEFT JOIN appointments a ON a.patient_id = p.id AND a.deleted_at IS NULL\nWHERE p.deleted_at IS NULL\nGROUP BY p.id\nORDER BY p.created_at DESC\nLIMIT 50",
+        "options": {}
+      },
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ { patients: $json, total: $json.length } }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-patients"
+}

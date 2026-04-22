@@ -71,6 +71,67 @@ export class JsonDatabase {
             return Object.entries(query).every(([k, v]) => item[k] === v)
         })
     }
+
+    async findOne(key, query) {
+        const items = await this.find(key, query)
+        return items[0] || null
+    }
+}
+
+const jsonDb = new JsonDatabase()
+
+export const fileDbService = {
+    async findPatientByEmail(email) {
+        const patients = await jsonDb.find('patients', { email: email.toLowerCase() })
+        return patients[0] || null
+    },
+
+    async findPatientByPhone(phone) {
+        const patients = await jsonDb.find('patients', { phone: phone.replace(/\D/g, '') })
+        return patients[0] || null
+    },
+
+    async savePatient(data) {
+        const fullName = data.fullName || ''
+        const nameParts = fullName.trim().split(' ')
+        return jsonDb.create('patients', {
+            email: data.email?.toLowerCase(),
+            phone: data.phone?.replace(/\D/g, ''),
+            firstName: nameParts[0] || '',
+            lastName: nameParts.slice(1).join(' ') || '',
+            source: data.source || 'whatsapp',
+            consentStatus: 'pending',
+            createdAt: new Date().toISOString()
+        })
+    },
+
+    async updatePatient(id, updates) {
+        return jsonDb.update('patients', id, updates)
+    },
+
+    async getAppointments(patientId) {
+        const appointments = await jsonDb.find('appointments', {
+            patientId,
+            status: { $ne: 'cancelled' }
+        })
+        return appointments.filter(a => a.patientId === patientId && a.status !== 'cancelled')
+    },
+
+    async createAppointment(data) {
+        return jsonDb.create('appointments', {
+            patientId: data.patientId,
+            psychologistId: data.psychologistId,
+            scheduledAt: data.scheduledAt,
+            appointmentType: data.appointmentType,
+            status: 'scheduled',
+            durationMinutes: data.durationMinutes || 50,
+            createdAt: new Date().toISOString()
+        })
+    },
+
+    async cancelAppointment(id) {
+        return jsonDb.update('appointments', id, { status: 'cancelled' })
+    }
 }
 
 export default JsonDatabase

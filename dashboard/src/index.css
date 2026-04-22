@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-background: oklch(0.985 0.002 247.896);
+  --color-foreground: oklch(0.145 0.018 261.348);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.145 0.018 261.348);
+
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.145 0.018 261.348);
+
+  --color-primary: oklch(0.546 0.245 262.881);
+  --color-primary-foreground: oklch(0.985 0.002 247.896);
+
+  --color-secondary: oklch(0.948 0.01 261.344);
+  --color-secondary-foreground: oklch(0.145 0.018 261.348);
+
+  --color-muted: oklch(0.948 0.01 261.344);
+  --color-muted-foreground: oklch(0.552 0.016 261.349);
+
+  --color-accent: oklch(0.948 0.01 261.344);
+  --color-accent-foreground: oklch(0.145 0.018 261.348);
+
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.985 0.002 247.896);
+
+  --color-border: oklch(0.922 0.004 261.347);
+  --color-input: oklch(0.922 0.004 261.347);
+  --color-ring: oklch(0.546 0.245 262.881);
+
+  --color-secondary-text: oklch(0.552 0.016 261.349);
+  --color-tertiary: oklch(0.967 0.005 261.345);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --sidebar-width: 16rem;
+  --header-height: 4rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "name": "API - Create Patient",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "patients",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO patients (first_name, last_name, email, phone, consent_status, created_at, updated_at)\nVALUES (\n  $body.first_name,\n  $body.last_name,\n  $body.email,\n  $body.phone,\n  'pending',\n  NOW(),\n  NOW()\n)\nRETURNING id, first_name, last_name, email",
+        "options": {}
+      },
+      "id": "create-patient",
+      "name": "PostgreSQL - Crear Paciente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ $json }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "PostgreSQL - Crear Paciente", "type": "main" }]] },
+    "PostgreSQL - Crear Paciente": { "main": [[{ "node": "Respond", "type": "main" }]] }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-create-patient"
+}

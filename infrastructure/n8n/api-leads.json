@@ -1,0 +1,94 @@
+{
+  "name": "API - Leads",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "leads",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-get",
+      "name": "Webhook GET",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT\n  l.id,\n  l.first_name,\n  l.last_name,\n  l.email,\n  l.phone,\n  l.source,\n  l.status,\n  l.lead_score,\n  l.tags,\n  l.created_at\nFROM leads l\nWHERE l.deleted_at IS NULL\nORDER BY l.created_at DESC\nLIMIT 100",
+        "options": {}
+      },
+      "id": "get-leads",
+      "name": "PostgreSQL - Listar Leads",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ { leads: $json } }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond-get",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "leads",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-post",
+      "name": "Webhook POST",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO leads (first_name, last_name, email, phone, source, status, lead_score, created_at, updated_at)\nVALUES ($body.first_name, $body.last_name, $body.email, $body.phone, COALESCE($body.source, 'web'), 'new', 0, NOW(), NOW())\nRETURNING id, first_name, phone",
+        "options": {}
+      },
+      "id": "create-lead",
+      "name": "PostgreSQL - Crear Lead",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 600]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ $json }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond-post",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 600]
+    }
+  ],
+  "connections": {
+    "Webhook GET": { "main": [[{ "node": "PostgreSQL - Listar Leads", "type": "main" }]] },
+    "PostgreSQL - Listar Leads": { "main": [[{ "node": "Respond", "type": "main" }]] },
+    "Webhook POST": { "main": [[{ "node": "PostgreSQL - Crear Lead", "type": "main" }]] },
+    "PostgreSQL - Crear Lead": { "main": [[{ "node": "Respond", "type": "main" }]] }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-leads"
+}

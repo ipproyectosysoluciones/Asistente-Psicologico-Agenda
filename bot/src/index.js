@@ -3,16 +3,31 @@ import { createBot, createProvider, createFlow, addKeyword, MemoryDB } from '@bu
 import pkg from '@builderbot/provider-wppconnect'
 const { WPPConnectProvider } = pkg
 
-// Flow que responde a CUALQUIER cosa
+import { mainMenuFlow } from './flows/mainMenu.js'
+import { appointmentFlow } from './flows/appointment.js'
+import { knowledgeBaseFlow } from './flows/knowledgeBase.js'
+import { searchFlow } from './flows/knowledgeBase.js'
+import { appointmentStatusFlow } from './flows/appointment.js'
+import { cancelAppointmentFlow } from './flows/appointment.js'
+import { clinicalHistoryFlow } from './flows/clinicalHistory.js'
+import { registrationFlow } from './flows/registration.js'
+
 const catchAllFlow = addKeyword(['.*'])
-    .addAnswer('¡Hola! 👋 Recibí tu mensaje.')
-    .addAnswer('Escribe "cita" para agendar una cita.')
+    .addAnswer('Recibí tu mensaje. Escribí *menu* para ver las opciones.', {
+        buttons: [
+            { body: '🏠 Menú' },
+            { body: '📅 Agendar' }
+        ]
+    })
+
+const helpFlow = addKeyword(['ayuda', 'help', '?', 'socorro'])
+    .addAnswer('*Opciones disponibles:*\n\n📅 Agendar / Cita\n📋 Mi Historia Clínica\n📚 Biblioteca\n🏠 Menú\n\n*Escribí una opción.*')
 
 const main = async () => {
     console.log('🔄 Iniciando bot...')
-    
+
     const database = new MemoryDB()
-    
+
     const provider = createProvider(WPPConnectProvider, {
         name: 'AsistentePsicologico',
         qr: false,
@@ -23,28 +38,40 @@ const main = async () => {
         }
     })
 
-    // Logging de TODO
     provider.parser?.on?.('message', (msg) => {
-        console.log('📨 [PARSER] Mensaje:', msg.body)
+        console.log('📨 [PARSER]', msg.body)
     })
-    
+
     provider.on('any.message', (msg) => {
-        console.log('📨 [ANY] Mensaje:', msg.body || JSON.stringify(msg).substring(0,100))
+        console.log('📨 [ANY]', msg.body || JSON.stringify(msg).substring(0, 80))
     })
 
     provider.on('message', (msg) => {
-        console.log('📨 [MESSAGE] Msg:', msg.body || msg.type, '| From:', msg.from)
+        console.log('📨 [MSG]', msg.body || msg.type, '| From:', msg.from)
     })
 
     provider.on('connection.update', (update) => {
         console.log('📡 Conexión:', update.connection)
+        if (update.qr) {
+            console.log('📱 Escaneá el QR en http://localhost:3000')
+        }
     })
 
-    // Flow simple con regex para capturar todo
-    const flow = createFlow([catchAllFlow])
+    const flow = createFlow([
+        catchAllFlow,
+        helpFlow,
+        ...mainMenuFlow,
+        ...appointmentFlow,
+        appointmentStatusFlow,
+        cancelAppointmentFlow,
+        knowledgeBaseFlow,
+        searchFlow,
+        clinicalHistoryFlow,
+        registrationFlow
+    ])
 
     console.log('🚀 Creando bot...')
-    
+
     const result = await createBot({
         flow,
         provider,
@@ -56,7 +83,6 @@ const main = async () => {
 
     console.log('✅ Bot listo en http://localhost:3000')
     console.log('📱 Esperando mensajes...')
-    console.log('💡 Envia CUALQUIER mensaje desde WhatsApp')
 }
 
 main()

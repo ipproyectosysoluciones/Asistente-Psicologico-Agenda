@@ -1,0 +1,52 @@
+{
+  "name": "API - Appointments",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "appointments",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.first_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\n  AND ($filters.status IS NULL OR a.status = $filters.status)\n  AND ($filters.date IS NULL OR DATE(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City')) = $filters.date::date)\nORDER BY a.scheduled_at DESC\nLIMIT 50",
+        "options": {}
+      },
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ { appointments: $json, total: $json.length } }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-appointments"
+}
