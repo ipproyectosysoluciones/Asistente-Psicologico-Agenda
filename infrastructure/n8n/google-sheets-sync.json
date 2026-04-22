@@ -1,5 +1,5 @@
 {
-  "name": "Google Sheets - Sync",
+  "name": "Google Sheets - Sync Citas",
   "nodes": [
     {
       "parameters": {
@@ -7,13 +7,13 @@
           "interval": [
             {
               "field": "hours",
-              "hours": 6
+              "hours": 1
             }
           ]
         }
       },
       "id": "schedule-trigger",
-      "name": "Schedule - Diario 6am",
+      "name": "Schedule - Cada hora",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [250, 300]
@@ -21,69 +21,155 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT \n  a.id,\n  a.scheduled_at,\n  a.appointment_type,\n  a.status,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.google_meet_link,\n  a.created_at\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.scheduled_at >= CURRENT_DATE - INTERVAL '30 days'\nORDER BY a.scheduled_at DESC",
+        "query": "=SELECT \n  a.id,\n  a.scheduled_at AT TIME ZONE 'America/Mexico_City' AS scheduled_at,\n  a.appointment_type,\n  a.status,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  COALESCE(a.google_meet_link, '') AS google_meet_link,\n  a.created_at AT TIME ZONE 'America/Mexico_City' AS created_at,\n  NOW() AT TIME ZONE 'America/Mexico_City' AS sync_at\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE \n  a.created_at >= NOW() - INTERVAL '1 hour'\n  AND a.deleted_at IS NULL\nORDER BY a.created_at DESC",
         "options": {}
       },
       "id": "get-appointments",
-      "name": "PostgreSQL - Obtener Citas",
+      "name": "PostgreSQL - Citas nuevas (última hora)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1.1,
       "position": [500, 300]
     },
     {
       "parameters": {
-        "operation": "append",
-        "sheetId": "1YOUR_SHEET_ID_HERE",
-        "range": "A:J",
+        "rule": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "condition",
+                "name": "Condition",
+                "value1": "={{ $json.length }}",
+                "operation": "gt",
+                "value2": 0
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
         "options": {}
       },
-      "id": "append-sheet",
-      "name": "Google Sheets - Append",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 3,
+      "id": "if-new",
+      "name": "IF - Hay nuevas",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
       "position": [750, 300]
     },
     {
       "parameters": {
-        "to": "admin@example.com",
-        "subject": "Reporte Diario - Citas",
-        "body": "Se han sincronizado {{$json.count}} citas a Google Sheets.\n\nFecha: {{$json.date}}",
+        "operation": "append",
+        "sheetId": "{{ $env.GOOGLE_SHEET_ID }}",
+        "range": "A2",
+        "options": {
+          "valueInputMode": "USER_ENTERED"
+        }
+      },
+      "id": "append-sheet",
+      "name": "Google Sheets - Syncing",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE appointments SET updated_at = NOW() WHERE id IN ({{ $json.map(x => x.id).join(',') }})",
         "options": {}
       },
-      "id": "email-report",
-      "name": "Email - Reporte",
+      "id": "mark-synced",
+      "name": "PostgreSQL - Mark synced",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [1000, 450]
+    },
+    {
+      "parameters": {
+        "to": "{{ $env.NOTIFICATION_EMAIL }}",
+        "subject": "📊 Sync: {{ $json.length }} nuevas citas",
+        "body": "={{ $json.length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $json.map(x => x.scheduled_at + ' - ' + x.first_name + ' ' + x.last_name + ' (' + x.appointment_type + ')').join('\n') }}",
+        "options": {}
+      },
+      "id": "email-notify",
+      "name": "Gmail - Notificación",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [1000, 300]
+      "position": [1250, 150]
+    },
+    {
+      "parameters": {
+        "to": "{{ $env.NOTIFICATION_EMAIL }}",
+        "subject": "📭 No hay nuevas citas para sync",
+        "body": "No se encontraron citas nuevas para sincronizar en la última hora.",
+        "options": {}
+      },
+      "id": "email-empty",
+      "name": "Gmail - Sin nuevas",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1250, 450]
     }
   ],
   "connections": {
-    "Schedule - Diario 6am": {
+    "Schedule - Cada hora": {
       "main": [[
         {
-          "node": "PostgreSQL - Obtener Citas",
+          "node": "PostgreSQL - Citas nuevas (última hora)",
           "type": "main"
         }
       ]]
     },
-    "PostgreSQL - Obtener Citas": {
+    "PostgreSQL - Citas nuevas (última hora)": {
       "main": [[
         {
-          "node": "Google Sheets - Append",
+          "node": "IF - Hay nuevas",
           "type": "main"
         }
       ]]
     },
-    "Google Sheets - Append": {
+    "IF - Hay nuevas": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Syncing",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "node": "Gmail - Sin nuevas",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Syncing": {
       "main": [[
         {
-          "node": "Email - Reporte",
+          "node": "PostgreSQL - Mark synced",
           "type": "main"
         }
       ]]
+    },
+    "PostgreSQL - Mark synced": {
+      "main": [[
+        {
+          "node": "Gmail - Notificación",
+          "type": "main"
+        }
+      ]]
+    },
+    "Gmail - Sin nuevas": {
+      "main": [[]]
     }
   },
   "active": false,
-  "settings": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
   "id": "google-sheets-sync"
 }

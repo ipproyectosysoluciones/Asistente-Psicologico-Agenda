@@ -1,0 +1,89 @@
+{
+  "name": "Google Sheets - Sync Citas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sync-appointment",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Nueva Cita",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT \n  a.id,\n  a.scheduled_at,\n  a.appointment_type,\n  a.status,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.google_meet_link,\n  a.session_notes,\n  a.created_at,\n  NOW() AS sync_timestamp\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.id = $body.appointment_id\nLIMIT 1",
+        "options": {}
+      },
+      "id": "get-appointment",
+      "name": "PostgreSQL - Obtener Cita",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
+        "range": "A:M",
+        "options": {
+          "valueInputMode": "USER_ENTERED"
+        }
+      },
+      "id": "append-sheet",
+      "name": "Google Sheets - Nueva Fila",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "response": {
+          "response": {
+            "response": "={{ { success: true, synced: $json } }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Nueva Cita": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Obtener Cita",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Obtener Cita": {
+      "main": [[
+        {
+          "node": "Google Sheets - Nueva Fila",
+          "type": "main"
+        }
+      ]]
+    },
+    "Google Sheets - Nueva Fila": {
+      "main": [[
+        {
+          "node": "Respond",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "sync-appointment"
+}
