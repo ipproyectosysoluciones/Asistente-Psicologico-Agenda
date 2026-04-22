@@ -22,5 +22,12 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
     "nodemon": "^3.1.14"
+  },
+  "pnpm": {
+    "overrides": {
+      "protobufjs": ">=6.11.4",
+      "got": ">=11.8.3",
+      "file-type": ">=16.5.4"
+    }
   }
 }
