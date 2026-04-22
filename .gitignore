@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Logs
+*.log
+logs/
+
+# Build
+dist/
+build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sessions (WhatsApp)
+sessions/
+AsistentePsicologico_sessions/
+tokens/
+*.qr.png
+
+# Database
+*.sql.bak
+
+# Docker
+.docker/

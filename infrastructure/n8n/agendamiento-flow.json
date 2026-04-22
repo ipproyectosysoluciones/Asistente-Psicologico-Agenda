@@ -1,0 +1,163 @@
+{
+  "name": "Agendamiento - Citas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agendar",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Nueva Cita",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM appointments WHERE scheduled_at = '{{$json.body.scheduled_at}}' AND status != 'cancelled'",
+        "options": {}
+      },
+      "id": "check-availability",
+      "name": "PostgreSQL - Verificar Disponibilidad",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true
+            },
+            "conditions": [
+              {
+                "value1": "={{$json.number}}",
+                "operation": "greater",
+                "value2": "=0"
+              }
+            ]
+          },
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-available",
+      "name": "IF - Disponible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [750, 300],
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, google_calendar_event_id, created_at, updated_at) VALUES ((SELECT id FROM psychologists LIMIT 1), (SELECT id FROM patients WHERE email = '{{$json.body.email}}' LIMIT 1), '{{$json.body.scheduled_at}}', {{$json.body.duration}}, '{{$json.body.type}}', 'scheduled', '{{$json.calendar_event_id}}', NOW(), NOW())",
+        "options": {}
+      },
+      "id": "create-appointment",
+      "name": "PostgreSQL - Crear Cita",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "calendar": "primary",
+        "title": "Consulta - {{$json.body.patient_name}}",
+        "start": "{{$json.body.scheduled_at}}",
+        "end": "{{$json.body.scheduled_end}}",
+        "options": {
+          "location": "Google Meet"
+        }
+      },
+      "id": "create-calendar",
+      "name": "Google Calendar - Crear Evento",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.1,
+      "position": [1000, 350]
+    },
+    {
+      "parameters": {
+        "to": "{{$json.body.email}}",
+        "subject": "Cita Confirmada - Asistente Psicológico",
+        "body": "Hola {{$json.body.patient_name}},\n\nTu cita ha sido confirmada:\n📅 Fecha: {{$json.body.scheduled_date}}\n⏰ Hora: {{$json.body.scheduled_time}}\n\nLink de Google Meet: {{$json.meet_link}}\n\nPara cancelar o reprogramar, contactanos con 24h de anticipación.\n\nSaludos,\nAsistente Psicológico",
+        "options": {}
+      },
+      "id": "send-confirmation",
+      "name": "Email - Confirmación",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1250, 150]
+    },
+    {
+      "parameters": {
+        "to": "{{$json.body.email}}",
+        "subject": "Horario No Disponible",
+        "body": "Hola {{$json.body.patient_name}},\n\nLamentamos informarte que el horario solicitado no está disponible.\n\nPor favor, prueba con otro horario.\n\nSaludos,\nAsistente Psicológico",
+        "options": {}
+      },
+      "id": "send-unavailable",
+      "name": "Email - No Disponible",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1250, 450]
+    }
+  ],
+  "connections": {
+    "Webhook - Nueva Cita": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Verificar Disponibilidad",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Verificar Disponibilidad": {
+      "main": [[
+        {
+          "node": "IF - Disponible?",
+          "type": "main"
+        }
+      ]]
+    },
+    "IF - Disponible?": {
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Crear Cita",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "node": "Email - No Disponible",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Crear Cita": {
+      "main": [[
+        {
+          "node": "Google Calendar - Crear Evento",
+          "type": "main"
+        }
+      ]]
+    },
+    "Google Calendar - Crear Evento": {
+      "main": [[
+        {
+          "node": "Email - Confirmación",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "agendamiento-flow"
+}

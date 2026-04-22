@@ -1,0 +1,91 @@
+{
+  "hojas": [
+    {
+      "nombre": "Agenda_Pacientes",
+      "columnas": [
+        {
+          "columna": "A",
+          "nombre": "Fecha",
+          "formato": "fecha",
+          "validacion": "=NOT(ISBLANK(A2))",
+          "ejemplo": "2024-12-28"
+        },
+        {
+          "columna": "B",
+          "nombre": "Hora",
+          "formato": "hora",
+          "validacion": "=AND(B2>=TIMEVALUE(\"09:00\"),B2<=TIMEVALUE(\"18:00\"))",
+          "ejemplo": "10:00"
+        },
+        {
+          "columna": "C",
+          "nombre": "Nombre",
+          "formato": "texto",
+          "validacion": "=NOT(ISBLANK(C2))",
+          "ejemplo": "Juan Pérez"
+        },
+        {
+          "columna": "D",
+          "nombre": "Tipo",
+          "formato": "lista",
+          "validacion": "=OR(D2=\"Primera vez\",D2=\"Seguimiento\")",
+          "ejemplo": "Primera vez"
+        },
+        {
+          "columna": "E",
+          "nombre": "Email",
+          "formato": "texto",
+          "validacion": "=REGEXMATCH(E2,\"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$\")",
+          "ejemplo": "juan@email.com"
+        },
+        {
+          "columna": "F",
+          "nombre": "Teléfono",
+          "formato": "texto",
+          "validacion": "=LEN(F2)>=10",
+          "ejemplo": "1234567890"
+        },
+        {
+          "columna": "G",
+          "nombre": "Estado",
+          "formato": "lista",
+          "validacion": "=OR(G2=\"Confirmada\",G2=\"Pendiente\",G2=\"Cancelada\")",
+          "ejemplo": "Confirmada"
+        },
+        {
+          "columna": "H",
+          "nombre": "Link_Meet",
+          "formato": "texto",
+          "validacion": "=REGEXMATCH(H2,\"^https://meet.google.com/\")",
+          "ejemplo": "https://meet.google.com/abc-defg-hij"
+        },
+        {
+          "columna": "I",
+          "nombre": "Notas",
+          "formato": "texto",
+          "validacion": null,
+          "ejemplo": "Primera sesión - Ansiedad"
+        },
+        {
+          "columna": "J",
+          "nombre": "Último_Contacto",
+          "formato": "fecha_hora",
+          "validacion": null,
+          "ejemplo": "2024-12-28 10:00:00"
+        },
+        {
+          "columna": "K",
+          "nombre": "Próximo_Seguimiento",
+          "formato": "fecha",
+          "validacion": null,
+          "ejemplo": "2025-01-04"
+        }
+      ],
+      "formulas_auxiliares": {
+        "duracion_cita": "=IF(D2=\"Primera vez\",90,60)",
+        "hora_fin": "=B2+TIME(0,duracion_cita,0)",
+        "dias_hasta_cita": "=NETWORKDAYS(TODAY(),A2)"
+      }
+    }
+  ]
+}

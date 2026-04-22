@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  bot:
+    build:
+      context: ../bot
+      dockerfile: ../bot/Dockerfile
+    container_name: asistente-bot
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./bot/sessions:/app/sessions
+      - ./bot/data.json:/app/data.json:ro
+    environment:
+      - BOT_NAME=AsistentePsicologico
+      - SESSION_PATH=/app/sessions
+    restart: unless-stopped
+    network_mode: host

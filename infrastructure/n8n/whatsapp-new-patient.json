@@ -1,0 +1,65 @@
+{
+  "name": "WhatsApp - New Patient",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-new-patient",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO patients (first_name, last_name, email, phone, country, psychologist_id, created_at, updated_at) VALUES ('{{$json.body.first_name}}', '{{$json.body.last_name}}', '{{$json.body.email}}', '{{$json.body.phone}}', '{{$json.body.country}}', (SELECT id FROM psychologists LIMIT 1), NOW(), NOW())",
+        "options": {}
+      },
+      "id": "postgres-insert",
+      "name": "PostgreSQL - Insert Patient",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "to": "{{$json.body.email}}",
+        "subject": "Bienvenido a tu Asistente Psicológico",
+        "body": "Hola {{$json.body.first_name}},\n\nGracias por registrarte. Un оператор te contactará pronto para confirmar tu primera cita.\n\nSaludos,\nAsistente Psicológico",
+        "options": {}
+      },
+      "id": "email-confirm",
+      "name": "Email - Confirmation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Insert Patient",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Insert Patient": {
+      "main": [[
+        {
+          "node": "Email - Confirmation",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "whatsapp-new-patient"
+}

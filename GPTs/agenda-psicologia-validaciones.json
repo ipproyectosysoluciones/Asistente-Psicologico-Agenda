@@ -1,0 +1,127 @@
+{
+  "hojas": [
+    {
+      "nombre": "Configuración",
+      "columnas": [
+        {
+          "A": "Parámetro",
+          "B": "Valor"
+        },
+        {
+          "datos": [
+            ["duracion_primera_vez", "90"],
+            ["duracion_seguimiento", "50"],
+            ["buffer_entre_citas", "10"],
+            ["inicio_jornada", "09:00"],
+            ["fin_jornada", "18:00"],
+            ["inicio_almuerzo", "12:00"],
+            ["fin_almuerzo", "13:00"],
+            ["zona_horaria", "America/Mexico_City"],
+            ["dias_laborables", "2,3,4,5,6,7"] // Martes a Domingo
+          ]
+        }
+      ]
+    },
+    {
+      "nombre": "Agenda_Pacientes",
+      "nuevas_columnas": [
+        {
+          "L": "Duración_Cita",
+          "formato": "número",
+          "validacion": "=OR(L2=90,L2=50)",
+          "fórmula": "=IF(D2=\"Primera vez\",90,50)"
+        },
+        {
+          "M": "Hora_Fin",
+          "formato": "hora",
+          "fórmula": "=B2+TIME(0,L2,0)"
+        },
+        {
+          "N": "Sesiones_Totales",
+          "formato": "número",
+          "validacion": "=N2>=1"
+        },
+        {
+          "O": "Sesiones_Realizadas",
+          "formato": "número",
+          "fórmula": "=COUNTIFS(C:C,C2,D:D,\"Seguimiento\",G:G,\"Confirmada\")+IF(D2=\"Primera vez\",1,0)"
+        },
+        {
+          "P": "Sesiones_Restantes",
+          "formato": "número",
+          "fórmula": "=IF(N2>0,N2-O2,\"Por definir\")"
+        }
+      ]
+    },
+    {
+      "nombre": "Lista_Espera",
+      "columnas": [
+        {
+          "A": "Fecha_Solicitud",
+          "formato": "fecha_hora"
+        },
+        {
+          "B": "Nombre",
+          "formato": "texto"
+        },
+        {
+          "C": "Tipo",
+          "formato": "lista",
+          "validacion": "Primera vez,Seguimiento"
+        },
+        {
+          "D": "Preferencia_Horario",
+          "formato": "texto"
+        },
+        {
+          "E": "Email",
+          "formato": "texto"
+        },
+        {
+          "F": "Teléfono",
+          "formato": "texto"
+        },
+        {
+          "G": "Estado",
+          "formato": "lista",
+          "validacion": "Pendiente,Contactado,Agendado,Cancelado"
+        }
+      ]
+    }
+  ],
+  "validaciones": {
+    "horario": {
+      "formula": `
+        =AND(
+          NOT(OR(
+            WEEKDAY(A2,2)=1, // No lunes
+            AND(
+              B2>=TimeValue("12:00"),
+              B2<TimeValue("13:00")
+            )
+          )),
+          OR(
+            D2="Primera vez",
+            AND(
+              B2>=TimeValue("09:00"),
+              B2<=TimeValue("17:00"),
+              M2<=TimeValue("18:00")
+            )
+          )
+        )
+      `,
+      "mensaje": "Horario no válido. Verificar:\n- Martes a Domingo\n- 9:00 a 18:00\n- No disponible 12:00-13:00"
+    },
+    "conflicto_horario": {
+      "formula": `
+        =COUNTIFS(
+          A:A,A2,
+          B:B,">="&B2,
+          B:B,"<"&M2,
+          ROW:ROW,"<>"&ROW()
+        )=0
+      `,
+      "mensaje": "Conflicto con otra cita existente"
+    }
+  }
+}

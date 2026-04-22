@@ -1,0 +1,89 @@
+{
+  "name": "Google Sheets - Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hours": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule - Diario 6am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  a.id,\n  a.scheduled_at,\n  a.appointment_type,\n  a.status,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.google_meet_link,\n  a.created_at\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.scheduled_at >= CURRENT_DATE - INTERVAL '30 days'\nORDER BY a.scheduled_at DESC",
+        "options": {}
+      },
+      "id": "get-appointments",
+      "name": "PostgreSQL - Obtener Citas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1.1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "1YOUR_SHEET_ID_HERE",
+        "range": "A:J",
+        "options": {}
+      },
+      "id": "append-sheet",
+      "name": "Google Sheets - Append",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "to": "admin@example.com",
+        "subject": "Reporte Diario - Citas",
+        "body": "Se han sincronizado {{$json.count}} citas a Google Sheets.\n\nFecha: {{$json.date}}",
+        "options": {}
+      },
+      "id": "email-report",
+      "name": "Email - Reporte",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Schedule - Diario 6am": {
+      "main": [[
+        {
+          "node": "PostgreSQL - Obtener Citas",
+          "type": "main"
+        }
+      ]]
+    },
+    "PostgreSQL - Obtener Citas": {
+      "main": [[
+        {
+          "node": "Google Sheets - Append",
+          "type": "main"
+        }
+      ]]
+    },
+    "Google Sheets - Append": {
+      "main": [[
+        {
+          "node": "Email - Reporte",
+          "type": "main"
+        }
+      ]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "google-sheets-sync"
+}
