@@ -2,13 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { CalendarDays, Users, CheckCircle, XCircle, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import api from '@/lib/api'
 
 async function fetchStats() {
-  const res = await fetch('/api/stats', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching stats')
-  return res.json()
+  return api.get('/stats')
 }
 
 function StatCard({ title, value, description, icon: Icon, accent = 'text-primary' }: {

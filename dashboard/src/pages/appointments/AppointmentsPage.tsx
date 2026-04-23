@@ -14,32 +14,18 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import api from '@/lib/api'
 
 async function fetchAppointments() {
-  const res = await fetch('/api/appointments', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching appointments')
-  return res.json()
+  return api.get('/appointments')
 }
 
 async function fetchPatients() {
-  const res = await fetch('/api/patients', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching patients')
-  return res.json()
+  return api.get('/patients')
 }
 
 async function createAppointment(data: AppointmentForm) {
-  const res = await fetch('/api/appointments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating appointment')
-  return res.json()
+  return api.post('/appointments', data)
 }
 
 interface AppointmentForm {
