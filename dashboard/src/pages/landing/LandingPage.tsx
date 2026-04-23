@@ -38,10 +38,19 @@ export default function LandingPage() {
         </Card>
 
         <div className="flex flex-col gap-3">
-          <Button size="lg" className="w-full">
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => window.open(`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER ?? ''}`, '_blank')}
+          >
             📱 Escribinos por WhatsApp
           </Button>
-          <Button variant="outline" size="lg" className="w-full">
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onClick={() => window.location.href = '/capture'}
+          >
             📅 Agendar Cita
           </Button>
         </div>

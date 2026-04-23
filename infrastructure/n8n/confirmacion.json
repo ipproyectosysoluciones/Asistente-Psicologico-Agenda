@@ -180,7 +180,7 @@
       ]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {},
   "id": "confirmacion"
 }
