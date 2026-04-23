@@ -3,10 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY dashboard/package.json dashboard/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-COPY dashboard/ ./
+COPY . ./
 RUN pnpm run build
 
 # Production stage with nginx
@@ -29,6 +29,16 @@ server {
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     gzip_min_length 1000;
+
+    location /api/ {
+        proxy_pass http://n8n:5678/webhook/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
 
     location / {
         try_files $uri $uri/ /index.html;
