@@ -15,7 +15,7 @@ export const registrationSimpleFlow = [
 ]
 
 export const newPatientKeywordFlow = [
-    addKeyword(['primera vez', 'nueva cita', 'nuevo paciente'])
+    addKeyword(['nueva cita', 'nuevo paciente'])
         .addAnswer('*Nueva Cita - Primera Consulta*\n\nLas primera consultas tienen una duración de *90 minutos*.\n\n*Costo*: USD $60\n\n*Continuamos?* Escribí *sí* para proceder.', { buttons: [
             { body: '✅ Sí, continuar' },
             { body: '🏠 Cancelar' }
