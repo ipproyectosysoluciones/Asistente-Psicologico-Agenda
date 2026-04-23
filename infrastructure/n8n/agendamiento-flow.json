@@ -59,8 +59,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, google_calendar_event_id, created_at, updated_at) VALUES ((SELECT id FROM psychologists LIMIT 1), (SELECT id FROM patients WHERE email = '{{$json.body.email}}' LIMIT 1), '{{$json.body.scheduled_at}}', {{$json.body.duration}}, '{{$json.body.type}}', 'scheduled', '{{$json.calendar_event_id}}', NOW(), NOW())",
-        "options": {}
+        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, google_calendar_event_id, created_at, updated_at)\nVALUES (\n  $1::uuid,\n  (SELECT id FROM patients WHERE email = $2 LIMIT 1),\n  $3::timestamptz,\n  $4::integer,\n  $5,\n  'scheduled',\n  $6,\n  NOW(),\n  NOW()\n)\nRETURNING id, scheduled_at, appointment_type",
+        "options": {
+          "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.email }},={{ $json.body.scheduled_at }},={{ $json.body.duration || 50 }},={{ $json.body.type }},={{ $json.calendar_event_id || null }}"
+        }
       },
       "id": "create-appointment",
       "name": "PostgreSQL - Crear Cita",
@@ -136,7 +138,7 @@
         ],
         [
           {
-            "node": "Email - No Disponible",
+            "node": "Gmail - No Disponible",
             "type": "main"
           }
         ]
@@ -153,7 +155,7 @@
     "Google Calendar - Crear Evento": {
       "main": [[
         {
-          "node": "Email - Confirmación",
+          "node": "Gmail - Confirmación",
           "type": "main"
         }
       ]]
