@@ -33,8 +33,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE appointments\nSET status = 'no_show',\n       updated_at = NOW()\nWHERE id = {{ $json.id }}",
-        "options": {}
+        "query": "UPDATE appointments SET status = 'no_show', updated_at = NOW() WHERE id = $1::uuid",
+        "options": {
+          "queryReplacement": "={{ $json.id }}"
+        }
       },
       "id": "mark-noshow",
       "name": "PostgreSQL - Marcar No-Show",

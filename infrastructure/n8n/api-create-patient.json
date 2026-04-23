@@ -17,8 +17,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO patients (first_name, last_name, email, phone, consent_status, created_at, updated_at)\nVALUES (\n  $body.first_name,\n  $body.last_name,\n  $body.email,\n  $body.phone,\n  'pending',\n  NOW(),\n  NOW()\n)\nRETURNING id, first_name, last_name, email",
-        "options": {}
+        "query": "INSERT INTO patients (psychologist_id, first_name, last_name, email, phone, consent_status, created_at, updated_at)\nVALUES ($1::uuid, $2, $3, $4, $5, 'pending', NOW(), NOW())\nRETURNING id, first_name, last_name, email",
+        "options": {
+          "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.first_name }},={{ $json.body.last_name }},={{ $json.body.email }},={{ $json.body.phone }}"
+        }
       },
       "id": "create-patient",
       "name": "PostgreSQL - Crear Paciente",

@@ -21,7 +21,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City') AS scheduled_at,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.appointment_type,\n  a.google_meet_link,\n  ps.time_zone,\n  EXTRACT(EPOCH FROM (a.scheduled_at - NOW())) / 3600 AS hours_until,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City'), 'YYYY-MM-DD') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City'), 'HH24:MI') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() AND NOW() + INTERVAL '25 hours'\n  AND a.scheduled_at > NOW()",
+        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.appointment_type,\n  a.google_meet_link,\n  ps.timezone,\n  EXTRACT(EPOCH FROM (a.scheduled_at - NOW())) / 3600 AS hours_until,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City'), 'YYYY-MM-DD') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City'), 'HH24:MI') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() AND NOW() + INTERVAL '25 hours'\n  AND a.scheduled_at > NOW()",
         "options": {}
       },
       "id": "get-appointments",
@@ -113,7 +113,7 @@
     {
       "parameters": {
         "to": "={{ $json.email }}",
-        "subject": "📅 Recordatorio: Tu cita es mañana",
+        "subject": "=📅 Recordatorio: Tu cita es mañana [ID:{{ $json.id }}]",
         "body": "=Hola {{ $json.first_name }},\n\nTe recordamos que tienes una cita *mañana*.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n📋 Tipo: {{ $json.appointment_type }}\n{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nPor favor confirma tu asistencia respondiendo *CONFIRMAR* o *CANCELAR*.\n\nSi no confirmas con 24h de anticipación, la cita podría liberarse.\n\nSaludos",
         "options": {}
       },
