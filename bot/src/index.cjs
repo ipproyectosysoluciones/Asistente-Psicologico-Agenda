@@ -1,15 +1,16 @@
-require('dotenv/config')
-const bot = require('@builderbot/bot')
-const { createBot, createProvider, createFlow, addKeyword, MemoryDB } = bot
-const providerBaileys = require('@builderbot/provider-baileys')
-const { BaileysProvider } = providerBaileys
+import 'dotenv/config'
+import { createBot, createProvider, createFlow, addKeyword, MemoryDB } from '@builderbot/bot'
+import pkg from '@builderbot/provider-wppconnect'
+const { WPPConnectProvider } = pkg
 
-const { mainMenuFlow } = require('./flows/mainMenu.cjs')
-const { appointmentFlow } = require('./flows/appointment.cjs')
-const { knowledgeBaseFlow, searchFlow } = require('./flows/knowledgeBase.cjs')
-const { appointmentStatusFlow, cancelAppointmentFlow } = require('./flows/appointment.cjs')
-const { clinicalHistoryFlow } = require('./flows/clinicalHistory.cjs')
-const { registrationFlow } = require('./flows/registration.cjs')
+import { mainMenuFlow } from './flows/mainMenu.js'
+import { appointmentFlow } from './flows/appointment.js'
+import { knowledgeBaseFlow } from './flows/knowledgeBase.js'
+import { searchFlow } from './flows/knowledgeBase.js'
+import { appointmentStatusFlow } from './flows/appointment.js'
+import { cancelAppointmentFlow } from './flows/appointment.js'
+import { clinicalHistoryFlow } from './flows/clinicalHistory.js'
+import { registrationFlow } from './flows/registration.js'
 
 const catchAllFlow = addKeyword(['.*'])
     .addAnswer('Recibí tu mensaje. Escribí *menu* para ver las opciones.', {
@@ -23,13 +24,18 @@ const helpFlow = addKeyword(['ayuda', 'help', '?', 'socorro'])
     .addAnswer('*Opciones disponibles:*\n\n📅 Agendar / Cita\n📋 Mi Historia Clínica\n📚 Biblioteca\n🏠 Menú\n\n*Escribí una opción.*')
 
 const main = async () => {
-    console.log('🔄 Iniciando bot con Baileys...')
+    console.log('🔄 Iniciando bot...')
 
     const database = new MemoryDB()
 
-    const provider = createProvider(BaileysProvider, {
+    const provider = createProvider(WPPConnectProvider, {
         name: 'AsistentePsicologico',
-        folderNameToken: 'tokens'
+        qr: false,
+        folderNameToken: 'tokens',
+        puppeteer: {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        }
     })
 
     provider.parser?.on?.('message', (msg) => {
@@ -46,6 +52,9 @@ const main = async () => {
 
     provider.on('connection.update', (update) => {
         console.log('📡 Conexión:', update.connection)
+        if (update.qr) {
+            console.log('📱 Escaneá el QR en http://localhost:3000')
+        }
     })
 
     const flow = createFlow([
@@ -57,8 +66,8 @@ const main = async () => {
         cancelAppointmentFlow,
         knowledgeBaseFlow,
         searchFlow,
-        ...clinicalHistoryFlow,
-        ...registrationFlow
+        clinicalHistoryFlow,
+        registrationFlow
     ])
 
     console.log('🚀 Creando bot...')
