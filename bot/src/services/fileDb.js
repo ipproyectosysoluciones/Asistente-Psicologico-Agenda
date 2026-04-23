@@ -110,11 +110,8 @@ export const fileDbService = {
     },
 
     async getAppointments(patientId) {
-        const appointments = await jsonDb.find('appointments', {
-            patientId,
-            status: { $ne: 'cancelled' }
-        })
-        return appointments.filter(a => a.patientId === patientId && a.status !== 'cancelled')
+        const all = await jsonDb.get('appointments')
+        return all.filter(a => a.patientId === patientId && a.status !== 'cancelled')
     },
 
     async createAppointment(data) {
