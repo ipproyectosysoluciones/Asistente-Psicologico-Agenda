@@ -8,8 +8,12 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-const AUTH_USER = 'admin'
-const AUTH_PASS = 'password'
+const AUTH_USER = import.meta.env.VITE_DASHBOARD_USER
+const AUTH_PASS = import.meta.env.VITE_DASHBOARD_PASS
+
+if (!AUTH_USER || !AUTH_PASS) {
+  throw new Error('VITE_DASHBOARD_USER and VITE_DASHBOARD_PASS env vars are required')
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
