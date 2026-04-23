@@ -4,11 +4,8 @@ import pkg from '@builderbot/provider-wppconnect'
 const { WPPConnectProvider } = pkg
 
 import { mainMenuFlow } from './flows/mainMenu.js'
-import { appointmentFlow } from './flows/appointment.js'
-import { knowledgeBaseFlow } from './flows/knowledgeBase.js'
-import { searchFlow } from './flows/knowledgeBase.js'
-import { appointmentStatusFlow } from './flows/appointment.js'
-import { cancelAppointmentFlow } from './flows/appointment.js'
+import { appointmentFlow, primeraVezFlow, seguimientoFlow, appointmentStatusFlow, cancelAppointmentFlow } from './flows/appointment.js'
+import { knowledgeBaseFlow, searchFlow } from './flows/knowledgeBase.js'
 import { clinicalHistoryFlow } from './flows/clinicalHistory.js'
 import { registrationFlow } from './flows/registration.js'
 
@@ -61,13 +58,15 @@ const main = async () => {
         catchAllFlow,
         helpFlow,
         ...mainMenuFlow,
-        ...appointmentFlow,
+        appointmentFlow,
+        primeraVezFlow,
+        seguimientoFlow,
         appointmentStatusFlow,
         cancelAppointmentFlow,
         knowledgeBaseFlow,
         searchFlow,
-        clinicalHistoryFlow,
-        registrationFlow
+        ...clinicalHistoryFlow,
+        ...registrationFlow
     ])
 
     console.log('🚀 Creando bot...')

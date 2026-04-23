@@ -12,7 +12,7 @@ const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar'])
         ]
     })
 
-addKeyword('primera vez')
+export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
     .addAction(async (ctx, { flowDynamic, state }) => {
         await state.update({ appointmentType: 'primera vez' })
         await flowDynamic('👤 *Primera Consulta*\n\n• Duración: 90 minutos\n• Costo: $60 USD\n\n*¿Cuál es tu nombre completo?*', { capture: true })
@@ -129,7 +129,7 @@ addKeyword('primera vez')
         await state.clear()
     })
 
-addKeyword('seguimiento')
+export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
     .addAction(async (ctx, { flowDynamic, state }) => {
         await state.update({ appointmentType: 'seguimiento' })
         await flowDynamic('🔄 *Seguimiento*\n\n• Duración: 50 minutos\n• Costo: $45 USD\n\n*¿Cuál es tu email de registro?*', { capture: true })
@@ -254,4 +254,4 @@ export const cancelAppointmentFlow = addKeyword(['cancelar cita', 'cancelar', 'r
         await flowDynamic('⚠️ *Política*: Cancelaciones con 24h de anticipación.\n\n📧 Tu solicitud ha sido registrada.\n\n*Escribí *menu*.')
     })
 
-export default appointmentFlow
+export { appointmentFlow }

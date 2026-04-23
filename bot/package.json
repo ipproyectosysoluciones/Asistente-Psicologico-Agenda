@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
+    "lint": "node --check src/index.js src/flows/appointment.js src/flows/mainMenu.js src/flows/clinicalHistory.js src/flows/registration.js src/flows/knowledgeBase.js src/services/appointmentService.js src/services/fileDb.js src/services/knowledgeBase.js",
     "prepare": "husky"
   },
   "dependencies": {
