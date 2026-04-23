@@ -161,6 +161,30 @@ export const appointmentService = {
         return result.rows[0]
     },
 
+    async findPatientByEmail(email) {
+        const result = await pool.query(
+            `SELECT id, first_name, last_name, email
+             FROM patients
+             WHERE email = $1 AND deleted_at IS NULL
+             LIMIT 1`,
+            [email.toLowerCase()]
+        )
+        return result.rows[0] || null
+    },
+
+    async createPatient({ fullName, email, phone, psychologistId }) {
+        const nameParts = (fullName || '').trim().split(' ')
+        const firstName = nameParts[0] || ''
+        const lastName = nameParts.slice(1).join(' ') || ''
+        const result = await pool.query(
+            `INSERT INTO patients (psychologist_id, first_name, last_name, email, phone, consent_status, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, 'pending', NOW(), NOW())
+             RETURNING id, first_name, last_name, email`,
+            [psychologistId, firstName, lastName, email?.toLowerCase(), phone || null]
+        )
+        return result.rows[0]
+    },
+
     validateTimeSlot(dateStr, hourStr) {
         const [year, month, day] = dateStr.split('-').map(Number)
         const scheduledAt = new Date(year, month - 1, day, ...hourStr.split(':').map(Number))
