@@ -24,7 +24,7 @@ export const DURATIONS = {
     seguimiento: 50
 }
 
-export const DAYS = [1, 2, 3, 4, 5, 6, 0]
+export const DAYS = [2, 3, 4, 5, 6, 0]
 
 export const appointmentService = {
     async getAvailableSlots(psychologistId, date, duration = 50) {

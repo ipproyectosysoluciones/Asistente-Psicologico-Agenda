@@ -8,16 +8,3 @@ export const registrationFlow = [
         ]})
 ]
 
-export const registrationSimpleFlow = [
-    addKeyword(['registro', 'registrar', 'nuevo paciente'])
-        .addAnswer('*Registro de Nuevo Paciente*\n\nPara registrarte necesito:\n\n1️⃣ *Nombre completo*\n2️⃣ *Teléfono*\n3️⃣ *Email*\n4️⃣ *Tipo de consulta* (primera vez/seguimiento)\n\n*Responde cada pregunta cuando te la indique.*', 
-        { buttons: [{ body: '🏠 Cancelar' }] })
-]
-
-export const newPatientKeywordFlow = [
-    addKeyword(['nueva cita', 'nuevo paciente'])
-        .addAnswer('*Nueva Cita - Primera Consulta*\n\nLas primera consultas tienen una duración de *90 minutos*.\n\n*Costo*: USD $60\n\n*Continuamos?* Escribí *sí* para proceder.', { buttons: [
-            { body: '✅ Sí, continuar' },
-            { body: '🏠 Cancelar' }
-        ]})
-]
