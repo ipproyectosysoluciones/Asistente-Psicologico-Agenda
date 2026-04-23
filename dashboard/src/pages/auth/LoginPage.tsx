@@ -11,12 +11,8 @@ export default function LoginPage() {
     e.preventDefault()
     e.stopPropagation()
     
-    console.log('Attempt login:', user, pass)
-    
     try {
       const ok = login(user, pass)
-      console.log('Login success:', ok)
-      
       if (ok) {
         window.location.href = '/dashboard'
       } else {
