@@ -47,8 +47,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\nVALUES (\n  (SELECT id FROM psychologists LIMIT 1),\n  $body.patient_id,\n  $body.scheduled_at,\n  $body.duration_minutes,\n  $body.appointment_type,\n  'scheduled',\n  NOW(),\n  NOW()\n)\nRETURNING id, scheduled_at, appointment_type",
-        "options": {}
+        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\nVALUES (\n  $1::uuid,\n  $2::uuid,\n  $3::timestamptz,\n  $4::integer,\n  $5,\n  'scheduled',\n  NOW(),\n  NOW()\n)\nRETURNING id, scheduled_at, appointment_type",
+        "options": {
+          "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}"
+        }
       },
       "id": "create-appointment",
       "name": "PostgreSQL - Crear Cita",
