@@ -26,16 +26,16 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-bot
-            ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-dashboard
+images: |
+             ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot
+             ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -62,5 +62,5 @@ jobs:
       - name: Show deployed images
         run: |
           echo "✅ Images deployed to Docker Hub:"
-          echo "   Bot: ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-bot:latest"
-          echo "   Dashboard: ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-dashboard:latest"
+          echo "   Bot: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot:latest"
+          echo "   Dashboard: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard:latest"
