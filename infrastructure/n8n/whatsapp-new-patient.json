@@ -18,8 +18,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO patients (first_name, last_name, email, phone, country, psychologist_id, created_at, updated_at) VALUES ('{{$json.body.first_name}}', '{{$json.body.last_name}}', '{{$json.body.email}}', '{{$json.body.phone}}', '{{$json.body.country}}', (SELECT id FROM psychologists LIMIT 1), NOW(), NOW())",
-        "options": {}
+        "query": "INSERT INTO patients (first_name, last_name, email, phone, country, psychologist_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, (SELECT id FROM psychologists LIMIT 1), NOW(), NOW())",
+        "options": {
+          "queryReplacement": "={{ $json.body.first_name }},={{ $json.body.last_name }},={{ $json.body.email }},={{ $json.body.phone }},={{ $json.body.country }}"
+        }
       },
       "id": "postgres-insert",
       "name": "PostgreSQL - Insert Patient",

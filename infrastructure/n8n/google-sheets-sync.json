@@ -43,7 +43,7 @@
               {
                 "id": "condition",
                 "name": "Condition",
-                "value1": "={{ $json.length }}",
+                "value1": "={{ $input.all().length }}",
                 "operation": "gt",
                 "value2": 0
               }
@@ -78,8 +78,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE appointments SET updated_at = NOW() WHERE id IN ({{ $json.map(x => x.id).join(',') }})",
-        "options": {}
+        "query": "UPDATE appointments SET updated_at = NOW() WHERE id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ '{' + $input.all().map(x => x.json.id).join(',') + '}' }}"
+        }
       },
       "id": "mark-synced",
       "name": "PostgreSQL - Mark synced",
@@ -90,8 +92,8 @@
     {
       "parameters": {
         "to": "{{ $env.NOTIFICATION_EMAIL }}",
-        "subject": "📊 Sync: {{ $json.length }} nuevas citas",
-        "body": "={{ $json.length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $json.map(x => x.scheduled_at + ' - ' + x.first_name + ' ' + x.last_name + ' (' + x.appointment_type + ')').join('\n') }}",
+        "subject": "={{ '📊 Sync: ' + $input.all().length + ' nuevas citas' }}",
+        "body": "={{ $input.all().length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $input.all().map(x => x.json.scheduled_at + ' - ' + x.json.first_name + ' ' + x.json.last_name + ' (' + x.json.appointment_type + ')').join('\n') }}",
         "options": {}
       },
       "id": "email-notify",
