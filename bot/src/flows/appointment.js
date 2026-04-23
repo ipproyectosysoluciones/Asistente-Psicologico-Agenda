@@ -1,6 +1,5 @@
 import { addAnswer, addKeyword } from '@builderbot/bot'
 import { appointmentService, DURATIONS } from '../services/appointmentService.js'
-import { fileDbService } from '../services/fileDb.js'
 
 const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar'])
     .addAnswer('📅 *Agendar Cita*\n\nHorario de atención:\n• Martes a Domingo\n• 09:00 a 18:00\n• Lunch: 12:00 a 13:00\n\n*Duración:*\n• Primera vez: 90 min\n• Seguimiento: 50 min\n\n*¿Qué tipo de consulta necesitas?*', {
@@ -84,19 +83,19 @@ export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
         }
 
         try {
-            let patient = await fileDbService.findPatientByEmail(stateData.email)
+            const psychologistId = process.env.DEFAULT_PSYCHOLOGIST_ID
+            let patient = await appointmentService.findPatientByEmail(stateData.email)
             if (!patient) {
-                await fileDbService.savePatient({
+                patient = await appointmentService.createPatient({
                     fullName: stateData.fullName,
                     email: stateData.email,
-                    source: 'whatsapp'
+                    psychologistId
                 })
-                patient = await fileDbService.findPatientByEmail(stateData.email)
             }
 
             await appointmentService.createAppointment({
-                psychologistId: process.env.DEFAULT_PSYCHOLOGIST_ID,
-                patientId: patient?.id,
+                psychologistId,
+                patientId: patient.id,
                 scheduledAt: stateData.scheduledAt,
                 appointmentType: 'primera vez'
             })
@@ -182,7 +181,7 @@ export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
         }
 
         try {
-            const patient = await fileDbService.findPatientByEmail(stateData.email)
+            const patient = await appointmentService.findPatientByEmail(stateData.email)
 
             await appointmentService.createAppointment({
                 psychologistId: process.env.DEFAULT_PSYCHOLOGIST_ID,
@@ -209,7 +208,7 @@ export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
 export const appointmentStatusFlow = addKeyword(['mis citas', 'ver cita', 'mi cita', 'citas'])
     .addAnswer('📅 *Tus Citas*\n\n*Escribí tu email:*', { capture: true }, async (ctx, { flowDynamic }) => {
         const email = ctx.body.trim()
-        const patient = await fileDbService.findPatientByEmail(email)
+        const patient = await appointmentService.findPatientByEmail(email)
 
         if (!patient) {
             await flowDynamic('📭 No encontré citas para ese email.\n\nEscribí *menu*.')
@@ -245,7 +244,7 @@ export const appointmentStatusFlow = addKeyword(['mis citas', 'ver cita', 'mi ci
 export const cancelAppointmentFlow = addKeyword(['cancelar cita', 'cancelar', 'reagendar'])
     .addAnswer('📅 *Cancelar Cita*\n\nEscribí tu email de registro:', { capture: true }, async (ctx, { flowDynamic }) => {
         const email = ctx.body.trim()
-        const patient = await fileDbService.findPatientByEmail(email)
+        const patient = await appointmentService.findPatientByEmail(email)
 
         if (!patient) {
             await flowDynamic('📭 No encontré un paciente con ese email.\n\nEscribí *menu*.')
