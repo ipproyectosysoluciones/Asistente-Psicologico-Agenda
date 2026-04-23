@@ -16,7 +16,7 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
     CHROME_BIN=/usr/bin/chromium
 
 COPY bot/package.json bot/pnpm-lock.yaml ./
-RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY bot/ ./
 
