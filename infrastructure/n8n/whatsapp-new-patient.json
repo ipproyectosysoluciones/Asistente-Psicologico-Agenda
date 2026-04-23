@@ -33,7 +33,7 @@
       "parameters": {
         "to": "{{$json.body.email}}",
         "subject": "Bienvenido a tu Asistente Psicológico",
-        "body": "Hola {{$json.body.first_name}},\n\nGracias por registrarte. Un оператор te contactará pronto para confirmar tu primera cita.\n\nSaludos,\nAsistente Psicológico",
+        "body": "Hola {{$json.body.first_name}},\n\nGracias por registrarte. Un operador te contactará pronto para confirmar tu primera cita.\n\nSaludos,\nAsistente Psicológico",
         "options": {}
       },
       "id": "email-confirm",
