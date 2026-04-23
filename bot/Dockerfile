@@ -15,10 +15,10 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     CHROME_BIN=/usr/bin/chromium
 
-COPY bot/package.json bot/pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
 
-COPY bot/ ./
+COPY . ./
 
 # Crear directorio de tokens
 RUN mkdir -p /app/tokens
