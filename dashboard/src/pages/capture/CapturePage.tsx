@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Send } from 'lucide-react'
+import api from '@/lib/api'
 
 export default function CapturePage() {
   const navigate = useNavigate()
@@ -17,21 +18,13 @@ export default function CapturePage() {
     const phone = formData.get('phone') as string
 
     try {
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          first_name: formData.get('first_name'),
-          last_name: formData.get('last_name'),
-          phone,
-          email: formData.get('email'),
-          source: 'web_capture'
-        })
+      await api.post('/leads', {
+        first_name: formData.get('first_name'),
+        last_name: formData.get('last_name'),
+        phone,
+        email: formData.get('email'),
+        source: 'web_capture'
       })
-
-      if (!res.ok) {
-        throw new Error('Error al enviar')
-      }
 
       setSubmitted(true)
     } catch (err) {

@@ -14,24 +14,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import api from '@/lib/api'
 
 async function fetchPatients() {
-  const res = await fetch('/api/patients', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching patients')
-  return res.json()
+  return api.get('/patients')
 }
 
 async function createPatient(data: PatientForm) {
-  const res = await fetch('/api/patients', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating patient')
-  return res.json()
+  return api.post('/patients', data)
 }
 
 interface PatientForm {

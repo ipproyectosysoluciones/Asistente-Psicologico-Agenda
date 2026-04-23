@@ -14,24 +14,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import api from '@/lib/api'
 
 async function fetchLeads() {
-  const res = await fetch('/api/leads', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching leads')
-  return res.json()
+  return api.get('/leads')
 }
 
 async function createLead(data: LeadForm) {
-  const res = await fetch('/api/leads', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating lead')
-  return res.json()
+  return api.post('/leads', data)
 }
 
 interface LeadForm {
