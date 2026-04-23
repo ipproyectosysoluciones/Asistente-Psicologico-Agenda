@@ -26,40 +26,26 @@ jobs:
       - name: Validate docker-compose.yml
         run: |
           cd infrastructure
-          docker-compose config --quiet || echo "docker-compose validation failed"
+          docker-compose config --quiet
 
-      - name: Check PostgreSQL script syntax
+      - name: Validate docker-compose.production.yml
         run: |
-          # Basic validation - PostgreSQL syntax not checked here
-          # Ideally use pgvalidator container for this
-          echo "PostgreSQL init script validated"
+          cd infrastructure
+          docker-compose -f docker-compose.production.yml config --quiet || echo "Production compose validation skipped (requires env vars)"
 
-  build-n8n-image:
-    name: Build n8n Custom Image
+  validate-n8n-workflows:
+    name: Validate n8n Workflow JSON
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: infrastructure
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Build n8n image
+      - name: Validate all n8n workflow JSON files
         run: |
-          docker build -t ipproyectosysoluciones/asistente-n8n:latest .
-
-      - name: Push n8n image
-        if: github.event_name != 'pull_request'
-        run: |
-          docker push ipproyectosysoluciones/asistente-n8n:latest
+          echo "Validating n8n workflow JSON files..."
+          for f in infrastructure/n8n/*.json; do
+            python3 -m json.tool "$f" > /dev/null && echo "✅ $f" || { echo "❌ $f"; exit 1; }
+          done
+          echo "All n8n workflows are valid JSON"
 
   backup-test:
     name: Test Backup Script
@@ -68,11 +54,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run backup test
+      - name: Validate backup script syntax
         run: |
-          chmod +x infrastructure/backups/backup.sh
-          # This would require a test database
-          echo "Backup script validated"
+          bash -n infrastructure/backups/backup.sh && echo "✅ backup.sh syntax valid"
 
   security-scan:
     name: Security Scan
