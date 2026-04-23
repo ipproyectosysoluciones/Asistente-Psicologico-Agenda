@@ -17,8 +17,10 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.first_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\n  AND ($filters.status IS NULL OR a.status = $filters.status)\n  AND ($filters.date IS NULL OR DATE(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City')) = $filters.date::date)\nORDER BY a.scheduled_at DESC\nLIMIT 50",
-        "options": {}
+        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\n  AND ($1::text IS NULL OR $1 = '' OR a.status = $1)\n  AND ($2::text IS NULL OR $2 = '' OR DATE(a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City')) = $2::date)\nORDER BY a.scheduled_at DESC\nLIMIT 50",
+        "options": {
+          "queryReplacement": "={{ $json.query.status || '' }},={{ $json.query.date || '' }}"
+        }
       },
       "id": "postgres",
       "name": "PostgreSQL",
@@ -30,7 +32,7 @@
       "parameters": {
         "response": {
           "response": {
-            "response": "={{ { appointments: $json, total: $json.length } }}"
+            "response": "={{ { appointments: $input.all().map(i => i.json), total: $input.all().length } }}"
           }
         },
         "options": {}
