@@ -19,7 +19,7 @@
         "operation": "executeQuery",
         "query": "INSERT INTO patients (psychologist_id, first_name, last_name, email, phone, consent_status, created_at, updated_at)\nVALUES ($1::uuid, $2, $3, $4, $5, 'pending', NOW(), NOW())\nRETURNING id, first_name, last_name, email",
         "options": {
-          "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.first_name }},={{ $json.body.last_name }},={{ $json.body.email }},={{ $json.body.phone }}"
+          "queryReplacement": "={{ $env.DEFAULT_PSYCHOLOGIST_ID }},={{ $json.body.first_name }},={{ $json.body.last_name }},={{ $json.body.email }},={{ $json.body.phone }}"
         }
       },
       "id": "create-patient",

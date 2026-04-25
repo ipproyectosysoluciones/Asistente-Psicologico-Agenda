@@ -20,8 +20,12 @@ const catchAllFlow = addKeyword(['.*'])
 const helpFlow = addKeyword(['ayuda', 'help', '?', 'socorro'])
     .addAnswer('*Opciones disponibles:*\n\n📅 Agendar / Cita\n📋 Mi Historia Clínica\n📚 Biblioteca\n🏠 Menú\n\n*Escribí una opción.*')
 
+const PORT = process.env.PORT || 3000
+const HOST = process.env.HOST || '0.0.0.0'
+
 const main = async () => {
-    console.log('🔄 Iniciando bot...')
+    console.log('🔄 Iniciando bot con Baileys...')
+    console.log('📍 Puerto:', PORT, '| Host:', HOST)
 
     const database = new MemoryDB()
 
@@ -78,9 +82,9 @@ const main = async () => {
     })
 
     const { httpServer } = result
-    httpServer(3000)
+    httpServer(PORT, HOST)
 
-    console.log('✅ Bot listo en http://localhost:3000')
+    console.log(`✅ Bot listo en http://${HOST}:${PORT}`)
     console.log('📱 Esperando mensajes...')
 }
 

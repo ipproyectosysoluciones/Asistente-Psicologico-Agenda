@@ -27,6 +27,7 @@ services:
       - EXECUTIONS_TIMEOUT=300
       - EXECUTIONS_DATA_SAVE_ON_ERROR=all
       - EXECUTIONS_DATA_SAVE_ON_SUCCESS=all
+      - DEFAULT_PSYCHOLOGIST_ID=${PSYCHOLOGIST_ID}
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
@@ -56,12 +57,13 @@ services:
     build:
       context: ../dashboard
       dockerfile: Dockerfile
+      args:
+        - VITE_AUTH_USER=${DASHBOARD_USER}
+        - VITE_AUTH_PASS=${DASHBOARD_PASSWORD}
     container_name: asistente-dashboard
     restart: unless-stopped
     environment:
       - VITE_API_URL=${VITE_API_URL}
-      - VITE_AUTH_USER=${DASHBOARD_USER:-admin}
-      - VITE_AUTH_PASS=${DASHBOARD_PASSWORD}
     ports:
       - "80:80"
       - "443:443"
