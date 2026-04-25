@@ -7,6 +7,12 @@ COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
 COPY . ./
+
+ARG VITE_AUTH_USER
+ARG VITE_AUTH_PASS
+ENV VITE_AUTH_USER=$VITE_AUTH_USER
+ENV VITE_AUTH_PASS=$VITE_AUTH_PASS
+
 RUN pnpm run build
 
 # Production stage with nginx

@@ -8,11 +8,11 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null)
 
-const AUTH_USER = import.meta.env.VITE_DASHBOARD_USER
-const AUTH_PASS = import.meta.env.VITE_DASHBOARD_PASS
+const AUTH_USER = import.meta.env.VITE_AUTH_USER
+const AUTH_PASS = import.meta.env.VITE_AUTH_PASS
 
 if (!AUTH_USER || !AUTH_PASS) {
-  throw new Error('VITE_DASHBOARD_USER and VITE_DASHBOARD_PASS env vars are required')
+  throw new Error('VITE_AUTH_USER and VITE_AUTH_PASS env vars are required')
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
