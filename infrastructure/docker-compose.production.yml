@@ -45,8 +45,10 @@ services:
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - DEFAULT_PSYCHOLOGIST_ID=${PSYCHOLOGIST_ID}
+      - BOT_SESSION_PATH=/app/bot_sessions
     volumes:
       - ./tokens:/app/tokens
+      - bot_sessions:/app/bot_sessions
     networks:
       - asistente-network
     depends_on:
@@ -74,6 +76,8 @@ services:
 
 volumes:
   n8n_data:
+  bot_sessions:
+    driver: local
 
 networks:
   asistente-network:
