@@ -4,12 +4,7 @@
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hours": 1
-            }
-          ]
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
         }
       },
       "id": "schedule-trigger",
@@ -21,11 +16,11 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT \n  a.id,\n  a.scheduled_at AT TIME ZONE 'America/Mexico_City' AS scheduled_at,\n  a.appointment_type,\n  a.status,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  COALESCE(a.google_meet_link, '') AS google_meet_link,\n  a.created_at AT TIME ZONE 'America/Mexico_City' AS created_at,\n  NOW() AT TIME ZONE 'America/Mexico_City' AS sync_at\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE \n  a.created_at >= NOW() - INTERVAL '1 hour'\n  AND a.deleted_at IS NULL\nORDER BY a.created_at DESC",
+        "query": "SELECT\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS fecha,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'HH12:MI AM')  AS hora,\n  p.first_name || ' ' || p.last_name                                   AS paciente,\n  p.email,\n  p.phone                                                               AS telefono,\n  a.appointment_type                                                    AS tipo,\n  a.duration_minutes                                                    AS duracion_min,\n  a.status                                                              AS estado,\n  COALESCE(a.google_meet_link, '')                                      AS meet_link,\n  COALESCE(a.google_calendar_event_id, '')                              AS calendar_id,\n  COALESCE(a.session_notes, '')                                         AS notas,\n  TO_CHAR(a.created_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH12:MI AM') AS creada_en\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.created_at >= NOW() - INTERVAL '1 hour'\n  AND a.deleted_at IS NULL\nORDER BY a.scheduled_at ASC",
         "options": {}
       },
-      "id": "get-appointments",
-      "name": "PostgreSQL - Citas nuevas (última hora)",
+      "id": "pg-get",
+      "name": "PG - Citas nueva hora",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [500, 300]
@@ -34,20 +29,7 @@
       "parameters": {
         "rule": {
           "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition",
-                "name": "Condition",
-                "value1": "={{ $input.all().length }}",
-                "operation": "gt",
-                "value2": 0
-              }
-            ],
+            "conditions": [{ "id": "c1", "value1": "={{ $json.fecha }}", "operation": "isNotEmpty" }],
             "combinator": "and"
           },
           "options": {}
@@ -63,117 +45,45 @@
     {
       "parameters": {
         "operation": "append",
-        "sheetId": "{{ $env.GOOGLE_SHEET_ID }}",
-        "range": "A2",
-        "options": {
-          "valueInputMode": "USER_ENTERED"
-        }
+        "documentId": { "value": "={{ $env.GOOGLE_SHEET_ID }}", "mode": "id" },
+        "sheetName": { "value": "Citas", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha":        "={{ $json.fecha }}",
+            "Hora":         "={{ $json.hora }}",
+            "Paciente":     "={{ $json.paciente }}",
+            "Email":        "={{ $json.email }}",
+            "Teléfono":     "={{ $json.telefono }}",
+            "Tipo":         "={{ $json.tipo }}",
+            "Duración":     "={{ $json.duracion_min }}",
+            "Estado":       "={{ $json.estado }}",
+            "Meet":         "={{ $json.meet_link }}",
+            "Calendar ID":  "={{ $json.calendar_id }}",
+            "Notas":        "={{ $json.notas }}",
+            "Creada":       "={{ $json.creada_en }}"
+          }
+        },
+        "options": {}
       },
       "id": "append-sheet",
-      "name": "Google Sheets - Syncing",
+      "name": "Google Sheets - Append",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 3,
+      "typeVersion": 4,
       "position": [1000, 150]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE appointments SET updated_at = NOW() WHERE id = ANY($1::uuid[])",
-        "options": {
-          "queryReplacement": "={{ '{' + $input.all().map(x => x.json.id).join(',') + '}' }}"
-        }
-      },
-      "id": "mark-synced",
-      "name": "PostgreSQL - Mark synced",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [1000, 450]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $env.NOTIFICATION_EMAIL }}",
-        "subject": "={{ '📊 Sync: ' + $input.all().length + ' nuevas citas' }}",
-        "emailType": "text",
-        "message": "={{ $input.all().length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $input.all().map(x => x.json.scheduled_at + ' - ' + x.json.first_name + ' ' + x.json.last_name + ' (' + x.json.appointment_type + ')').join('\n') }}",
-        "options": {}
-      },
-      "id": "email-notify",
-      "name": "Gmail - Notificación",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [1250, 150]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $env.NOTIFICATION_EMAIL }}",
-        "subject": "📭 No hay nuevas citas para sync",
-        "emailType": "text",
-        "message": "No se encontraron citas nuevas para sincronizar en la última hora.",
-        "options": {}
-      },
-      "id": "email-empty",
-      "name": "Gmail - Sin nuevas",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [1250, 450]
     }
   ],
   "connections": {
-    "Schedule - Cada hora": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Citas nuevas (última hora)",
-          "type": "main"
-        }
-      ]]
-    },
-    "PostgreSQL - Citas nuevas (última hora)": {
-      "main": [[
-        {
-          "node": "IF - Hay nuevas",
-          "type": "main"
-        }
-      ]]
-    },
+    "Schedule - Cada hora": { "main": [[{ "node": "PG - Citas nueva hora", "type": "main" }]] },
+    "PG - Citas nueva hora": { "main": [[{ "node": "IF - Hay nuevas", "type": "main" }]] },
     "IF - Hay nuevas": {
       "main": [
-        [
-          {
-            "node": "Google Sheets - Syncing",
-            "type": "main"
-          }
-        ],
-        [
-          {
-            "node": "Gmail - Sin nuevas",
-            "type": "main"
-          }
-        ]
+        [{ "node": "Google Sheets - Append", "type": "main" }],
+        []
       ]
-    },
-    "Google Sheets - Syncing": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Mark synced",
-          "type": "main"
-        }
-      ]]
-    },
-    "PostgreSQL - Mark synced": {
-      "main": [[
-        {
-          "node": "Gmail - Notificación",
-          "type": "main"
-        }
-      ]]
-    },
-    "Gmail - Sin nuevas": {
-      "main": [[]]
     }
   },
   "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": {},
   "id": "google-sheets-sync"
 }
