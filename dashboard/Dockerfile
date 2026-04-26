@@ -36,6 +36,12 @@ server {
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     gzip_min_length 1000;
 
+    location = /health {
+        return 200 "ok\n";
+        add_header Content-Type text/plain;
+        access_log off;
+    }
+
     location /api/ {
         proxy_pass http://n8n:5678/webhook/;
         proxy_http_version 1.1;
