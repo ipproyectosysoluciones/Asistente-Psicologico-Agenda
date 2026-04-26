@@ -38,7 +38,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.item.json.text || $input.item.json.body || '';\nconst subject = $input.item.json.subject || '';\nconst normalized = body.toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// Extraer appointmentId del asunto: formato [ID:uuid]\nconst idMatch = subject.match(/\\[ID:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\]/i);\n$input.item.json.appointmentId = idMatch ? idMatch[1] : null;\n$input.item.json.action = null;\n\nif (normalized.includes('CONFIRMAR')) {\n  $input.item.json.action = 'confirmar';\n} else if (normalized.includes('CANCELAR')) {\n  $input.item.json.action = 'cancelar';\n}\n\nreturn $input.item;",
+        "jsCode": "const body = $input.item.json.text || $input.item.json.body || '';\nconst normalized = body.toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// Extract appointmentId from body: format \"Appointment ID: <uuid>\"\nconst idMatch = body.match(/Appointment ID:\\s*([a-f0-9-]{36})/i);\n$input.item.json.appointmentId = idMatch ? idMatch[1] : null;\n$input.item.json.action = null;\n\nif (normalized.includes('CONFIRMAR')) {\n  $input.item.json.action = 'confirmar';\n} else if (normalized.includes('CANCELAR')) {\n  $input.item.json.action = 'cancelar';\n}\n\nreturn $input.item;",
         "options": {}
       },
       "id": "parse-action",
@@ -46,6 +46,44 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false
+            },
+            "conditions": [
+              {
+                "id": "condition-uuid",
+                "name": "Condition",
+                "value1": "={{ $json.appointmentId }}",
+                "operation": "isNotEmpty"
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-uuid-guard",
+      "name": "IF - UUID válido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const from = $input.item.json.from || 'unknown';\nconst subject = $input.item.json.subject || '';\nconst body = ($input.item.json.text || $input.item.json.body || '').substring(0, 200);\nconst timestamp = new Date().toISOString();\nconsole.error('[confirmacion] invalid_appointment_id', JSON.stringify({ from, subject, timestamp, body_excerpt: body }));\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "log-error",
+      "name": "Code - Log Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 500]
     },
     {
       "parameters": {
@@ -73,7 +111,7 @@
       "name": "IF - Confirmar",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [750, 100]
+      "position": [1000, 150]
     },
     {
       "parameters": {
@@ -87,7 +125,7 @@
       "name": "PostgreSQL - Confirmar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1.1,
-      "position": [1000, 100]
+      "position": [1250, 100]
     },
     {
       "parameters": {
@@ -100,7 +138,7 @@
       "name": "Gmail - Confirmado",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [1250, 100]
+      "position": [1500, 100]
     },
     {
       "parameters": {
@@ -114,7 +152,7 @@
       "name": "PostgreSQL - Cancelar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 1.1,
-      "position": [1000, 500]
+      "position": [1250, 300]
     },
     {
       "parameters": {
@@ -127,7 +165,7 @@
       "name": "Gmail - Cancelado",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [1250, 500]
+      "position": [1500, 300]
     }
   ],
   "connections": {
@@ -142,10 +180,26 @@
     "Code - Parsear Acción": {
       "main": [[
         {
-          "node": "IF - Confirmar",
+          "node": "IF - UUID válido",
           "type": "main"
         }
       ]]
+    },
+    "IF - UUID válido": {
+      "main": [
+        [
+          {
+            "node": "IF - Confirmar",
+            "type": "main"
+          }
+        ],
+        [
+          {
+            "node": "Code - Log Error",
+            "type": "main"
+          }
+        ]
+      ]
     },
     "IF - Confirmar": {
       "main": [
