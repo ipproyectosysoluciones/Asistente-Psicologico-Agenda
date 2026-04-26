@@ -6,7 +6,7 @@
         "mailimap": {
           "sync": " Polling",
           "folder": "INBOX",
-          "forceFetch": true,
+          "forceFetch": false,
           "jsonOutput": false,
           "propertyNames": {
             "enum": "name"
