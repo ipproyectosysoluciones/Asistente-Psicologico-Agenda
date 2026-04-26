@@ -14,24 +14,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import api from '@/lib/api'
 
 async function fetchLeads() {
-  const res = await fetch('/api/leads', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching leads')
-  return res.json()
+  return api.get('/leads')
 }
 
 async function createLead(data: LeadForm) {
-  const res = await fetch('/api/leads', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating lead')
-  return res.json()
+  return api.post('/leads', data)
 }
 
 interface LeadForm {
@@ -215,7 +205,23 @@ export default function LeadsPage() {
                       <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
                       <TableCell>{lead.lead_score ?? 0}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Contactar</Button>
+                        {lead.email ? (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={`mailto:${lead.email as string}`} target="_blank" rel="noreferrer">
+                              Contactar
+                            </a>
+                          </Button>
+                        ) : lead.phone ? (
+                          <Button variant="ghost" size="sm" asChild>
+                            <a href={`https://wa.me/${(lead.phone as string).replace(/\D/g, '')}`} target="_blank" rel="noreferrer">
+                              Contactar
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="sm" disabled title="Sin datos de contacto">
+                            Contactar
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   )

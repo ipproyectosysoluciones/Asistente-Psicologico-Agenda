@@ -6,8 +6,8 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hours": 2
+              "field": "minutes",
+              "minutesInterval": 15
             }
           ]
         }
@@ -21,38 +21,41 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT\n  a.id,\n  a.scheduled_at,\n  p.first_name,\n  p.email,\n  a.status\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at < NOW() - INTERVAL '30 minutes'",
+        "query": "SELECT\n  a.id,\n  a.start_time,\n  p.first_name,\n  p.email,\n  a.status\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE\n  a.status IN ('pending', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.start_time >= NOW() - INTERVAL '2 hours'\n  AND a.start_time <= NOW()",
         "options": {}
       },
       "id": "get-no-show",
       "name": "PostgreSQL - Citas Vencidas",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [500, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE appointments\nSET status = 'no_show',\n       updated_at = NOW()\nWHERE id = {{ $json.id }}",
-        "options": {}
+        "query": "UPDATE appointments SET status = 'no_show', updated_at = NOW() WHERE id = $1::uuid",
+        "options": {
+          "queryReplacement": "={{ $json.id }}"
+        }
       },
       "id": "mark-noshow",
       "name": "PostgreSQL - Marcar No-Show",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [750, 300]
     },
     {
       "parameters": {
-        "to": "={{ $json.email }}",
+        "sendTo": "={{ $json.email }}",
         "subject": "📋 Cita marcada como inasistencia",
-        "body": "=Hola {{ $json.first_name }},\n\nTu cita del {{ $json.scheduled_at }} fue marcada como inasistencia (no_show) porque no te presentaste.\n\nSi crees que es un error o deseas reprogramar, contactanos.\n\nSaludos",
+        "emailType": "text",
+        "message": "=Hola {{ $json.first_name }},\n\nTu cita del {{ $json.scheduled_at }} fue marcada como inasistencia (no_show) porque no te presentaste.\n\nSi crees que es un error o deseas reprogramar, contactanos.\n\nSaludos",
         "options": {}
       },
       "id": "notify-noshow",
       "name": "Gmail - Notificar No-Show",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1000, 300]
     }
   ],
@@ -82,7 +85,7 @@
       ]]
     }
   },
-  "active": false,
+  "active": true,
   "settings": {},
   "id": "no-show"
 }

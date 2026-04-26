@@ -2,112 +2,94 @@
   "name": "API - Create Appointment",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "appointments",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "id": "webhook",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "parameters": { "httpMethod": "POST", "path": "appointments", "responseMode": "responseNode", "options": {} },
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 300]
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-patient",
-                "name": "Condition",
-                "value1": "={{ $json.body.patient_id }}",
-                "operation": "set",
-                "value2": null
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
         "options": {}
       },
-      "id": "if-patient",
-      "name": "IF - Patient Exists",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [500, 300]
+      "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-jwt", "name": "IF - JWT válido", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 300]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401", "name": "Respond 401", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 500]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\nVALUES (\n  (SELECT id FROM psychologists LIMIT 1),\n  $body.patient_id,\n  $body.scheduled_at,\n  $body.duration_minutes,\n  $body.appointment_type,\n  'scheduled',\n  NOW(),\n  NOW()\n)\nRETURNING id, scheduled_at, appointment_type",
-        "options": {}
+        "query": "WITH inserted AS (\n  INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\n  VALUES ($1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5, 'scheduled', NOW(), NOW())\n  RETURNING id, patient_id, scheduled_at, duration_minutes, appointment_type\n)\nSELECT\n  i.id,\n  i.scheduled_at,\n  i.duration_minutes,\n  i.appointment_type,\n  p.first_name,\n  p.last_name,\n  p.email\nFROM inserted i\nJOIN patients p ON p.id = i.patient_id",
+        "options": { "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}" }
       },
-      "id": "create-appointment",
-      "name": "PostgreSQL - Crear Cita",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
-      "position": [750, 150]
+      "id": "pg-insert", "name": "PG - INSERT Cita", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
     },
     {
       "parameters": {
-        "to": "={{ $json.body.email }}",
-        "subject": "📅 Tu cita ha sido programada",
-        "body": "=Hola,\n\nTu cita ha sido programada exitosamente.\n\n📅 Fecha: {{ $json.scheduled_at }}\n📋 Tipo: {{ $json.appointment_type }}\n\nTe enviaremos un recordatorio antes.\n\nSaludos",
+        "jsCode": "const appt = $input.item.json;\nconst start = new Date(appt.scheduled_at);\nconst end = new Date(start.getTime() + (appt.duration_minutes * 60 * 1000));\nconst webhookUrl = $env.WEBHOOK_URL || '';\nconst cancelLink = `${webhookUrl}/webhook/confirm/${appt.id}?action=cancelar`;\n\n$input.item.json.calendar_start = start.toISOString();\n$input.item.json.calendar_end = end.toISOString();\n$input.item.json.calendar_title = `Consulta Psicológica — ${appt.first_name} ${appt.last_name}`;\n$input.item.json.calendar_description = `Tipo: ${appt.appointment_type}\\n\\n¿Necesitás cancelar?\\n${cancelLink}\\n\\nPara reprogramar, contactanos directamente.`;\n\nreturn $input.item;",
         "options": {}
       },
-      "id": "email-confirm",
-      "name": "Gmail - Confirmación",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 150]
+      "id": "code-prepare", "name": "Code - Preparar Calendario", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1250, 150]
     },
     {
       "parameters": {
-        "to": "={{ $json.body.email }}",
-        "subject": "⚠️ Error al agendar",
-        "body": "=Hola,\n\nLamentablemente no pudimos agendar la cita. Por favor contactanos.\n\nSaludos",
-        "options": {}
-      },
-      "id": "error-email",
-      "name": "Gmail - Error",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 450]
-    },
-    {
-      "parameters": {
-        "response": {
-          "response": {
-            "response": "={{ { success: true, message: 'Cita programada' } }}"
+        "calendar": { "value": "primary", "mode": "id" },
+        "title": "={{ $json.calendar_title }}",
+        "start": "={{ $json.calendar_start }}",
+        "end": "={{ $json.calendar_end }}",
+        "additionalFields": {
+          "attendees": "={{ $json.email }}",
+          "description": "={{ $json.calendar_description }}",
+          "sendUpdates": "all",
+          "reminders": {
+            "useDefault": false,
+            "reminderList": {
+              "reminders": [
+                { "method": "email", "minutes": 1440 },
+                { "method": "email", "minutes": 60 },
+                { "method": "popup", "minutes": 60 }
+              ]
+            }
           }
-        },
-        "options": {}
+        }
       },
-      "id": "respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1250, 300]
+      "id": "google-calendar", "name": "Google Calendar - Crear Evento", "type": "n8n-nodes-base.googleCalendar", "typeVersion": 1.2, "position": [1500, 150]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE appointments SET google_calendar_event_id = $1, updated_at = NOW() WHERE id = $2::uuid",
+        "options": { "queryReplacement": "={{ $json.id }},={{ $('PG - INSERT Cita').item.json.id }}" }
+      },
+      "id": "pg-update-event", "name": "PG - Guardar Event ID", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1750, 150]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 201, "responseData": "={{ JSON.stringify({ success: true, appointment_id: $('PG - INSERT Cita').item.json.id, calendar_event_id: $('Google Calendar - Crear Evento').item.json.id }) }}" }
+      },
+      "id": "respond-201", "name": "Respond 201", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [2000, 150]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "IF - Patient Exists", "type": "main" }]] },
-    "IF - Patient Exists": {
+    "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
+    "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
+    "IF - JWT válido": {
       "main": [
-        [{ "node": "PostgreSQL - Crear Cita", "type": "main" }],
-        [{ "node": "Gmail - Error", "type": "main" }]
+        [{ "node": "PG - INSERT Cita", "type": "main" }],
+        [{ "node": "Respond 401", "type": "main" }]
       ]
     },
-    "PostgreSQL - Crear Cita": { "main": [[{ "node": "Gmail - Confirmación", "type": "main" }]] },
-    "Gmail - Confirmación": { "main": [[{ "node": "Respond", "type": "main" }]] }
+    "PG - INSERT Cita": { "main": [[{ "node": "Code - Preparar Calendario", "type": "main" }]] },
+    "Code - Preparar Calendario": { "main": [[{ "node": "Google Calendar - Crear Evento", "type": "main" }]] },
+    "Google Calendar - Crear Evento": { "main": [[{ "node": "PG - Guardar Event ID", "type": "main" }]] },
+    "PG - Guardar Event ID": { "main": [[{ "node": "Respond 201", "type": "main" }]] }
   },
   "active": true,
   "settings": {},

@@ -1,18 +1,13 @@
 {
-  "name": "Recordatorios - Citas",
+  "name": "Recordatorios - Auto No-Show",
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hours": 1
-            }
-          ]
+          "interval": [{ "field": "minutes", "minutesInterval": 30 }]
         }
       },
-      "id": "schedule-trigger",
+      "id": "schedule",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -21,156 +16,58 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City') AS scheduled_at,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.appointment_type,\n  a.google_meet_link,\n  ps.time_zone,\n  EXTRACT(EPOCH FROM (a.scheduled_at - NOW())) / 3600 AS hours_until,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City'), 'YYYY-MM-DD') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.time_zone, 'America/Mexico_City'), 'HH24:MI') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() AND NOW() + INTERVAL '25 hours'\n  AND a.scheduled_at > NOW()",
+        "query": "UPDATE appointments\nSET status = 'no_show', updated_at = NOW()\nWHERE status = 'scheduled'\n  AND deleted_at IS NULL\n  AND scheduled_at + (duration_minutes || ' minutes')::INTERVAL + INTERVAL '15 minutes' < NOW()\nRETURNING\n  id,\n  scheduled_at,\n  appointment_type,\n  (SELECT first_name || ' ' || last_name FROM patients WHERE id = patient_id) AS patient_name",
         "options": {}
       },
-      "id": "get-appointments",
-      "name": "PostgreSQL - Citas Próximas",
+      "id": "pg-no-show",
+      "name": "PG - Marcar No-Show",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [500, 300]
     },
     {
       "parameters": {
         "rule": {
           "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-hours",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "lte",
-                "value2": 1
-              }
-            ],
+            "conditions": [{ "id": "c1", "value1": "={{ $json.id }}", "operation": "isNotEmpty" }],
             "combinator": "and"
           },
           "options": {}
         },
         "options": {}
       },
-      "id": "if-1h",
-      "name": "IF - 1h antes",
+      "id": "if-has-results",
+      "name": "IF - Hay No-Shows",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [750, 100]
+      "position": [750, 300]
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-hours24",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "gt",
-                "value2": 1
-              },
-              {
-                "id": "condition-hours24b",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "lte",
-                "value2": 24
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
+        "sendTo": "bladyparra@gmail.com",
+        "subject": "=⚠️ No-show registrado: {{ $json.patient_name }}",
+        "emailType": "text",
+        "message": "=Se marcó como no-show:\n\nPaciente: {{ $json.patient_name }}\nFecha: {{ $json.scheduled_at }}\nTipo: {{ $json.appointment_type }}\n\nID: {{ $json.id }}",
         "options": {}
       },
-      "id": "if-24h",
-      "name": "IF - 24h antes",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [750, 500]
-    },
-    {
-      "parameters": {
-        "to": "={{ $json.email }}",
-        "subject": "⏰ Recordatorio: Tu cita es en 1 hora",
-        "body": "=Hola {{ $json.first_name }},\n\nTe recordamos que tienes una cita en *1 hora*.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n📋 Tipo: {{ $json.appointment_type }}\n{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nTe pedimos llegar 5 minutos antes.\n\nSi necesitas cancelar, contactanos con 24h de anticipación.\n\nSaludos",
-        "options": {}
-      },
-      "id": "email-1h",
-      "name": "Gmail - Recordatorio 1h",
+      "id": "gmail-notify",
+      "name": "Gmail - Notificar No-Show",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 100]
-    },
-    {
-      "parameters": {
-        "to": "={{ $json.email }}",
-        "subject": "📅 Recordatorio: Tu cita es mañana",
-        "body": "=Hola {{ $json.first_name }},\n\nTe recordamos que tienes una cita *mañana*.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n📋 Tipo: {{ $json.appointment_type }}\n{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nPor favor confirma tu asistencia respondiendo *CONFIRMAR* o *CANCELAR*.\n\nSi no confirmas con 24h de anticipación, la cita podría liberarse.\n\nSaludos",
-        "options": {}
-      },
-      "id": "email-24h",
-      "name": "Gmail - Recordatorio 24h",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 500]
+      "typeVersion": 2.2,
+      "position": [1000, 150]
     }
   ],
   "connections": {
-    "Schedule Trigger": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Citas Próximas",
-          "type": "main"
-        }
-      ]]
-    },
-    "PostgreSQL - Citas Próximas": {
-      "main": [[
-        {
-          "node": "IF - 1h antes",
-          "type": "main"
-        }
-      ]]
-    },
-    "IF - 1h antes": {
+    "Schedule Trigger": { "main": [[{ "node": "PG - Marcar No-Show", "type": "main" }]] },
+    "PG - Marcar No-Show": { "main": [[{ "node": "IF - Hay No-Shows", "type": "main" }]] },
+    "IF - Hay No-Shows": {
       "main": [
-        [
-          {
-            "node": "Gmail - Recordatorio 1h",
-            "type": "main"
-          }
-        ],
-        [
-          {
-            "node": "IF - 24h antes",
-            "type": "main"
-          }
-        ]
-      ]
-    },
-    "IF - 24h antes": {
-      "main": [
-        [
-          {
-            "node": "Gmail - Recordatorio 24h",
-            "type": "main"
-          }
-        ]
+        [{ "node": "Gmail - Notificar No-Show", "type": "main" }],
+        []
       ]
     }
   },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "active": true,
+  "settings": {},
   "id": "recordatorios"
 }

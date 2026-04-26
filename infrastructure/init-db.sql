@@ -335,7 +335,7 @@ CREATE TABLE clinical_impression (
     
     summary TEXT,
     formulation TEXT,
-    Prognosis TEXT,
+    prognosis TEXT,
     recommendations TEXT,
     
     version INT DEFAULT 1,
@@ -451,15 +451,6 @@ CREATE TABLE knowledge_base (
 
 CREATE INDEX idx_knowledge_category ON knowledge_base(category);
 CREATE INDEX idx_knowledge_psychologist ON knowledge_base(psychologist_id);
-
--- Trigger for updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER knowledge_base_updated_at
     BEFORE UPDATE ON knowledge_base

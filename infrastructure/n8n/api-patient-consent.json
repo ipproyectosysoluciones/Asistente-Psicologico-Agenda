@@ -1,0 +1,137 @@
+{
+  "name": "API - Patient Consent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "patients/:id/consent",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'missing'; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'malformed'; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'invalid_sig'; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'expired'; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-verify",
+      "name": "JWT Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-jwt",
+      "name": "IF JWT",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" }
+      },
+      "id": "respond-401",
+      "name": "401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE patients\nSET\n  consent_status = 'signed',\n  consent_signed_at = NOW()\nWHERE id = $1::uuid\n  AND deleted_at IS NULL\nRETURNING id, consent_status, consent_signed_at",
+        "options": { "queryReplacement": "={{ $json.params.id }}" }
+      },
+      "id": "pg-update",
+      "name": "PG UPDATE",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.item.json;\nif (!row || !row.id) {\n  return [{ json: { __status: 404 } }];\n}\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "check-found",
+      "name": "Check Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "c2", "value1": "={{ $json.__status }}", "operation": "equals", "value2": 404 }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-found",
+      "name": "IF Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 150]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 404, "responseData": "={\"error\":\"Patient not found\"}" }
+      },
+      "id": "respond-404",
+      "name": "404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 200, "responseData": "={{ JSON.stringify({ ok: true, consent_status: $json.consent_status, consent_signed_at: $json.consent_signed_at }) }}" }
+      },
+      "id": "respond-200",
+      "name": "200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "JWT Verify", "type": "main" }]] },
+    "JWT Verify": { "main": [[{ "node": "IF JWT", "type": "main" }]] },
+    "IF JWT": {
+      "main": [
+        [{ "node": "PG UPDATE", "type": "main" }],
+        [{ "node": "401", "type": "main" }]
+      ]
+    },
+    "PG UPDATE": { "main": [[{ "node": "Check Found", "type": "main" }]] },
+    "Check Found": { "main": [[{ "node": "IF Found", "type": "main" }]] },
+    "IF Found": {
+      "main": [
+        [{ "node": "404", "type": "main" }],
+        [{ "node": "200", "type": "main" }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-patient-consent"
+}

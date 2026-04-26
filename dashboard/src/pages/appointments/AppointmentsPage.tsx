@@ -14,32 +14,71 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import api from '@/lib/api'
 
-async function fetchAppointments() {
-  const res = await fetch('/api/appointments', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching appointments')
-  return res.json()
+type Appointment = Record<string, unknown>
+
+function AppointmentDetailDialog({ appt, onClose }: { appt: Appointment; onClose: () => void }) {
+  const date = new Date(appt.scheduled_at as string)
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Detalle de Cita</DialogTitle>
+          <DialogDescription>
+            {String(appt.first_name ?? '')} {String(appt.last_name ?? '')}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <div className="grid grid-cols-2 gap-2">
+            <span className="text-muted-foreground">Fecha</span>
+            <span>{format(date, 'dd MMM yyyy', { locale: es })}</span>
+            <span className="text-muted-foreground">Hora</span>
+            <span>{format(date, 'HH:mm')} hrs</span>
+            <span className="text-muted-foreground">Tipo</span>
+            <span className="capitalize">{appt.appointment_type as string}</span>
+            <span className="text-muted-foreground">Duración</span>
+            <span>{String(appt.duration_minutes ?? '')} min</span>
+            <span className="text-muted-foreground">Estado</span>
+            <span className="capitalize">{appt.status as string}</span>
+          </div>
+          {(appt.email as string | null) && (
+            <>
+              <Separator />
+              <div className="grid grid-cols-2 gap-2">
+                <span className="text-muted-foreground">Email</span>
+                <span>{appt.email as string}</span>
+                {(appt.session_notes as string | null) && (
+                  <>
+                    <span className="text-muted-foreground">Notas</span>
+                    <span>{appt.session_notes as string}</span>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cerrar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const PAGE_SIZE = 20
+
+async function fetchAppointments(page: number) {
+  return api.get(`/appointments?page=${page}&limit=${PAGE_SIZE}`)
 }
 
 async function fetchPatients() {
-  const res = await fetch('/api/patients', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching patients')
-  return res.json()
+  return api.get('/patients')
 }
 
 async function createAppointment(data: AppointmentForm) {
-  const res = await fetch('/api/appointments', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating appointment')
-  return res.json()
+  return api.post('/appointments', data)
 }
 
 interface AppointmentForm {
@@ -59,11 +98,13 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 
 export default function AppointmentsPage() {
   const [open, setOpen] = useState(false)
+  const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
+  const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
-  
+
   const { data: appointments, isLoading } = useQuery({
-    queryKey: ['appointments'],
-    queryFn: fetchAppointments,
+    queryKey: ['appointments', page],
+    queryFn: () => fetchAppointments(page),
     retry: false
   })
 
@@ -83,6 +124,8 @@ export default function AppointmentsPage() {
 
   const appts = appointments?.appointments ?? []
   const patients = patientsData?.patients ?? []
+  const totalPages = (appointments as any)?.total_pages ?? 1
+  const totalCount = (appointments as any)?.total_count ?? 0
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -126,7 +169,7 @@ export default function AppointmentsPage() {
                     <option value="">Seleccionar paciente...</option>
                     {patients.map((p: Record<string, unknown>) => (
                       <option key={p.id as string} value={p.id as string}>
-                        {p.first_name} {p.last_name}
+                        {String(p.first_name ?? '')} {String(p.last_name ?? '')}
                       </option>
                     ))}
                   </select>
@@ -167,7 +210,9 @@ export default function AppointmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Todas las Citas</CardTitle>
+          <CardTitle className="text-base">
+            Todas las Citas {totalCount > 0 && <span className="text-muted-foreground font-normal text-sm">({totalCount})</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -209,16 +254,16 @@ export default function AppointmentsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{appt.first_name} {appt.last_name}</div>
+                        <div className="font-medium">{String(appt.first_name ?? '')} {String(appt.last_name ?? '')}</div>
                         <div className="text-xs text-muted-foreground">{appt.email as string}</div>
                       </TableCell>
                       <TableCell className="capitalize">{appt.appointment_type as string}</TableCell>
-                      <TableCell>{appt.duration_minutes} min</TableCell>
+                      <TableCell>{String(appt.duration_minutes ?? '')} min</TableCell>
                       <TableCell>
                         <Badge variant={status.variant}>{status.label}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Ver</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedAppt(appt)}>Ver</Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -226,8 +271,28 @@ export default function AppointmentsPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-muted-foreground">
+              <span>Página {page} de {totalPages}</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+                  Anterior
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {selectedAppt && (
+        <AppointmentDetailDialog
+          appt={selectedAppt}
+          onClose={() => setSelectedAppt(null)}
+        />
+      )}
     </div>
   )
 }

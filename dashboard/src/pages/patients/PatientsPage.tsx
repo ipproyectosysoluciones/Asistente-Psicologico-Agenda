@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,24 +15,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import api from '@/lib/api'
 
-async function fetchPatients() {
-  const res = await fetch('/api/patients', {
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error fetching patients')
-  return res.json()
+const PAGE_SIZE = 20
+
+async function fetchPatients(page: number) {
+  return api.get(`/patients?page=${page}&limit=${PAGE_SIZE}`)
 }
 
 async function createPatient(data: PatientForm) {
-  const res = await fetch('/api/patients', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-    baseURL: import.meta.env.VITE_API_URL || ''
-  })
-  if (!res.ok) throw new Error('Error creating patient')
-  return res.json()
+  return api.post('/patients', data)
 }
 
 interface PatientForm {
@@ -49,10 +42,12 @@ const CONSENT_LABELS: Record<string, { label: string; variant: 'default' | 'seco
 
 export default function PatientsPage() {
   const [open, setOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
-    queryKey: ['patients'],
-    queryFn: fetchPatients,
+    queryKey: ['patients', page],
+    queryFn: () => fetchPatients(page),
     retry: false
   })
 
@@ -65,6 +60,8 @@ export default function PatientsPage() {
   })
 
   const patients = data?.patients ?? []
+  const totalPages = (data as any)?.total_pages ?? 1
+  const totalCount = (data as any)?.total_count ?? 0
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -126,7 +123,9 @@ export default function PatientsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Todos los Pacientes</CardTitle>
+          <CardTitle className="text-base">
+            Todos los Pacientes {totalCount > 0 && <span className="text-muted-foreground font-normal text-sm">({totalCount})</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -177,7 +176,13 @@ export default function PatientsPage() {
                           : '—'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Ver HC</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/patients/${patient.id as string}?tab=hc`)}
+                        >
+                          Ver HC
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
@@ -185,6 +190,19 @@ export default function PatientsPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-muted-foreground">
+              <span>Página {page} de {totalPages}</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+                  Anterior
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

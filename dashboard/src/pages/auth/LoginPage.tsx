@@ -7,23 +7,14 @@ export default function LoginPage() {
   const [pass, setPass] = useState('')
   const [error, setError] = useState(false)
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     e.stopPropagation()
-    
-    console.log('Attempt login:', user, pass)
-    
-    try {
-      const ok = login(user, pass)
-      console.log('Login success:', ok)
-      
-      if (ok) {
-        window.location.href = '/dashboard'
-      } else {
-        setError(true)
-      }
-    } catch (err) {
-      console.error('Login error:', err)
+    const ok = await login(user, pass)
+    if (ok) {
+      window.location.href = '/dashboard'
+    } else {
+      setError(true)
     }
   }
 

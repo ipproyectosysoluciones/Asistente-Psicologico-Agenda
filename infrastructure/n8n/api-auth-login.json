@@ -1,0 +1,92 @@
+{
+  "name": "API - Auth Login",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auth/login",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "POST /auth/login",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { username, password } = $input.item.json.body || {};\nconst { timingSafeEqual, createHmac } = require('crypto');\n\nfunction safeEqual(a, b) {\n  const aBuf = Buffer.from(String(a || ''));\n  const bBuf = Buffer.from(String(b || ''));\n  if (aBuf.length !== bBuf.length) return false;\n  return timingSafeEqual(aBuf, bBuf);\n}\n\nconst validUser = safeEqual(username, $env.N8N_AUTH_USER);\nconst validPass = safeEqual(password, $env.N8N_AUTH_PASS);\n\nif (!validUser || !validPass) {\n  $input.item.json.authValid = false;\n  return $input.item;\n}\n\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');\nconst payload = Buffer.from(JSON.stringify({ sub: username, iat: now, exp: now + 28800 })).toString('base64url');\nconst sig = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url');\n\n$input.item.json.authValid = true;\n$input.item.json.token = `${header}.${payload}.${sig}`;\n$input.item.json.expiresIn = 28800;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "validate-creds",
+      "name": "Code - Validate Credentials",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [
+              {
+                "id": "cond-valid",
+                "value1": "={{ $json.authValid }}",
+                "operation": "equals",
+                "value2": true
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-valid",
+      "name": "IF - Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={{ JSON.stringify({ token: $json.token, expiresIn: $json.expiresIn }) }}"
+        }
+      },
+      "id": "respond-ok",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401,
+          "responseData": "={\"error\":\"Invalid credentials\"}"
+        }
+      },
+      "id": "respond-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 450]
+    }
+  ],
+  "connections": {
+    "POST /auth/login": { "main": [[{ "node": "Code - Validate Credentials", "type": "main" }]] },
+    "Code - Validate Credentials": { "main": [[{ "node": "IF - Valid", "type": "main" }]] },
+    "IF - Valid": {
+      "main": [
+        [{ "node": "Respond 200", "type": "main" }],
+        [{ "node": "Respond 401", "type": "main" }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-auth-login"
+}
