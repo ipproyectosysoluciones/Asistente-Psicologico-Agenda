@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import AppointmentsPage from '@/pages/appointments/AppointmentsPage'
 import PatientsPage from '@/pages/patients/PatientsPage'
+import PatientDetailPage from '@/pages/patients/PatientDetailPage'
 import LeadsPage from '@/pages/leads/LeadsPage'
 import LandingPage from '@/pages/landing/LandingPage'
 import CapturePage from '@/pages/capture/CapturePage'
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="dashboard" element={<ErrorBoundary serviceName="Dashboard"><DashboardPage /></ErrorBoundary>} />
           <Route path="appointments" element={<ErrorBoundary serviceName="Citas"><AppointmentsPage /></ErrorBoundary>} />
           <Route path="patients" element={<ErrorBoundary serviceName="Pacientes"><PatientsPage /></ErrorBoundary>} />
+          <Route path="patients/:id" element={<ErrorBoundary serviceName="HC Paciente"><PatientDetailPage /></ErrorBoundary>} />
           <Route path="leads" element={<ErrorBoundary serviceName="Leads"><LeadsPage /></ErrorBoundary>} />
         </Route>
       </Routes>
