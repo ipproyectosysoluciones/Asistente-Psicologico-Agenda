@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,7 @@ const CONSENT_LABELS: Record<string, { label: string; variant: 'default' | 'seco
 
 export default function PatientsPage() {
   const [open, setOpen] = useState(false)
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['patients'],
@@ -167,7 +169,13 @@ export default function PatientsPage() {
                           : '—'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Ver HC</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/patients/${patient.id as string}?tab=hc`)}
+                        >
+                          Ver HC
+                        </Button>
                       </TableCell>
                     </TableRow>
                   )
