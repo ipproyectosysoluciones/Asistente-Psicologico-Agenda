@@ -1,0 +1,137 @@
+{
+  "name": "API - Patient Detail",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "patients/:id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'missing'; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'malformed'; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'invalid_sig'; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'expired'; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-verify",
+      "name": "JWT Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-jwt",
+      "name": "IF JWT",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" }
+      },
+      "id": "respond-401",
+      "name": "401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  p.id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  p.date_of_birth,\n  p.gender,\n  p.consent_status,\n  p.consent_signed_at,\n  p.first_appointment_at,\n  p.last_appointment_at,\n  p.total_sessions,\n  p.created_at,\n  EXISTS(SELECT 1 FROM demographics     WHERE patient_id = p.id AND is_current = true) AS demographics_complete,\n  EXISTS(SELECT 1 FROM chief_complaint  WHERE patient_id = p.id AND is_current = true) AS chief_complaint_complete,\n  EXISTS(SELECT 1 FROM personal_history WHERE patient_id = p.id AND is_current = true) AS personal_history_complete,\n  EXISTS(SELECT 1 FROM diagnosis        WHERE patient_id = p.id AND is_current = true) AS diagnosis_complete,\n  EXISTS(SELECT 1 FROM treatment_plan   WHERE patient_id = p.id AND is_current = true) AS treatment_plan_complete\nFROM patients p\nWHERE p.id = $1::uuid\n  AND p.deleted_at IS NULL\nLIMIT 1",
+        "options": { "queryReplacement": "={{ $json.params.id }}" }
+      },
+      "id": "pg-get",
+      "name": "PG GET",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.item.json;\nif (!row || !row.id) {\n  return [{ json: { __status: 404 } }];\n}\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "check-found",
+      "name": "Check Found",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "c2", "value1": "={{ $json.__status }}", "operation": "equals", "value2": 404 }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-found",
+      "name": "IF Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 150]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 404, "responseData": "={\"error\":\"Patient not found\"}" }
+      },
+      "id": "respond-404",
+      "name": "404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" }
+      },
+      "id": "respond-200",
+      "name": "200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 0]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "JWT Verify", "type": "main" }]] },
+    "JWT Verify": { "main": [[{ "node": "IF JWT", "type": "main" }]] },
+    "IF JWT": {
+      "main": [
+        [{ "node": "PG GET", "type": "main" }],
+        [{ "node": "401", "type": "main" }]
+      ]
+    },
+    "PG GET": { "main": [[{ "node": "Check Found", "type": "main" }]] },
+    "Check Found": { "main": [[{ "node": "IF Found", "type": "main" }]] },
+    "IF Found": {
+      "main": [
+        [{ "node": "404", "type": "main" }],
+        [{ "node": "200", "type": "main" }]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "id": "api-patient-detail"
+}
