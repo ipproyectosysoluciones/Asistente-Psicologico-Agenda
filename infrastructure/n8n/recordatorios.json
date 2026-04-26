@@ -1,18 +1,13 @@
 {
-  "name": "Recordatorios - Citas",
+  "name": "Recordatorios - Citas Programadas",
   "nodes": [
     {
       "parameters": {
         "rule": {
-          "interval": [
-            {
-              "field": "hours",
-              "hours": 1
-            }
-          ]
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
         }
       },
-      "id": "schedule-trigger",
+      "id": "schedule",
       "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -21,158 +16,69 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.appointment_type,\n  a.google_meet_link,\n  ps.timezone,\n  EXTRACT(EPOCH FROM (a.scheduled_at - NOW())) / 3600 AS hours_until,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City'), 'YYYY-MM-DD') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City'), 'HH24:MI') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() AND NOW() + INTERVAL '25 hours'\n  AND a.scheduled_at > NOW()",
+        "query": "SELECT\n  a.id,\n  a.appointment_type,\n  a.google_meet_link,\n  p.first_name,\n  p.email,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'DD/MM/YYYY') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'HH12:MI AM') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours'\n  AND p.email IS NOT NULL",
         "options": {}
       },
-      "id": "get-appointments",
-      "name": "PostgreSQL - Citas Próximas",
+      "id": "pg-24h",
+      "name": "PG - Citas 24h",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [500, 300]
+      "position": [500, 150]
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-hours",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "lte",
-                "value2": 1
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
+        "operation": "executeQuery",
+        "query": "SELECT\n  a.id,\n  a.appointment_type,\n  a.google_meet_link,\n  p.first_name,\n  p.email,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'DD/MM/YYYY') AS date,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'HH12:MI AM') AS time\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at BETWEEN NOW() + INTERVAL '50 minutes' AND NOW() + INTERVAL '70 minutes'\n  AND p.email IS NOT NULL",
         "options": {}
       },
-      "id": "if-1h",
-      "name": "IF - 1h antes",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [750, 100]
-    },
-    {
-      "parameters": {
-        "rule": {
-          "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-hours24",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "gt",
-                "value2": 1
-              },
-              {
-                "id": "condition-hours24b",
-                "name": "Condition",
-                "value1": "={{ $json.hours_until }}",
-                "operation": "lte",
-                "value2": 24
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
-        "options": {}
-      },
-      "id": "if-24h",
-      "name": "IF - 24h antes",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [750, 500]
+      "id": "pg-1h",
+      "name": "PG - Citas 1h",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [500, 450]
     },
     {
       "parameters": {
         "sendTo": "={{ $json.email }}",
-        "subject": "⏰ Recordatorio: Tu cita es en 1 hora",
+        "subject": "=📅 Recordatorio: Tu cita es mañana [{{ $json.date }}]",
         "emailType": "text",
-        "message": "=Hola {{ $json.first_name }},\n\nTe recordamos que tienes una cita en *1 hora*.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n📋 Tipo: {{ $json.appointment_type }}\n{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nTe pedimos llegar 5 minutos antes.\n\nSi necesitas cancelar, contactanos con 24h de anticipación.\n\nSaludos\n\nAppointment ID: {{ $json.id }}",
+        "message": "=Hola {{ $json.first_name }},\n\nTe recordamos que tenés una cita MAÑANA.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n💻 Tipo: {{ $json.appointment_type }}{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nPor favor confirmá tu asistencia haciendo click:\n\n✅ CONFIRMAR asistencia\n{{ $env.WEBHOOK_URL }}/webhook/confirm/{{ $json.id }}?action=confirmar\n\n❌ CANCELAR cita\n{{ $env.WEBHOOK_URL }}/webhook/confirm/{{ $json.id }}?action=cancelar\n\nSaludos",
         "options": {}
       },
-      "id": "email-1h",
-      "name": "Gmail - Recordatorio 1h",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [1000, 100]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $json.email }}",
-        "subject": "=📅 Recordatorio: Tu cita es mañana [ID:{{ $json.id }}]",
-        "emailType": "text",
-        "message": "=Hola {{ $json.first_name }},\n\nTe recordamos que tienes una cita *mañana*.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n📋 Tipo: {{ $json.appointment_type }}\n{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nPor favor confirma tu asistencia respondiendo *CONFIRMAR* o *CANCELAR*.\n\nSi no confirmas con 24h de anticipación, la cita podría liberarse.\n\nSaludos\n\nAppointment ID: {{ $json.id }}",
-        "options": {}
-      },
-      "id": "email-24h",
+      "id": "gmail-24h",
       "name": "Gmail - Recordatorio 24h",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
-      "position": [1000, 500]
+      "position": [750, 150]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "=⏰ Recordatorio: Tu cita es en 1 hora [{{ $json.time }}]",
+        "emailType": "text",
+        "message": "=Hola {{ $json.first_name }},\n\nTu cita es en 1 HORA.\n\n📅 Fecha: {{ $json.date }}\n⏰ Hora: {{ $json.time }}\n💻 Tipo: {{ $json.appointment_type }}{{ $json.google_meet_link ? '\n🔗 Meet: ' + $json.google_meet_link : '' }}\n\nTe pedimos estar listo/a 5 minutos antes.\n\nSaludos",
+        "options": {}
+      },
+      "id": "gmail-1h",
+      "name": "Gmail - Recordatorio 1h",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [750, 450]
     }
   ],
   "connections": {
     "Schedule Trigger": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Citas Próximas",
-          "type": "main"
-        }
-      ]]
-    },
-    "PostgreSQL - Citas Próximas": {
-      "main": [[
-        {
-          "node": "IF - 1h antes",
-          "type": "main"
-        }
-      ]]
-    },
-    "IF - 1h antes": {
       "main": [
         [
-          {
-            "node": "Gmail - Recordatorio 1h",
-            "type": "main"
-          }
-        ],
-        [
-          {
-            "node": "IF - 24h antes",
-            "type": "main"
-          }
+          { "node": "PG - Citas 24h", "type": "main", "index": 0 },
+          { "node": "PG - Citas 1h", "type": "main", "index": 0 }
         ]
       ]
     },
-    "IF - 24h antes": {
-      "main": [
-        [
-          {
-            "node": "Gmail - Recordatorio 24h",
-            "type": "main"
-          }
-        ]
-      ]
-    }
+    "PG - Citas 24h": { "main": [[{ "node": "Gmail - Recordatorio 24h", "type": "main" }]] },
+    "PG - Citas 1h": { "main": [[{ "node": "Gmail - Recordatorio 1h", "type": "main" }]] }
   },
   "active": true,
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": {},
   "id": "recordatorios"
 }

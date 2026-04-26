@@ -1,48 +1,26 @@
 {
-  "name": "Confirmación - Respuestas de Pacientes",
+  "name": "Confirmación - Click de Paciente",
   "nodes": [
     {
       "parameters": {
-        "mailimap": {
-          "sync": " Polling",
-          "folder": "INBOX",
-          "forceFetch": false,
-          "jsonOutput": false,
-          "propertyNames": {
-            "enum": "name"
-          },
-          "credentialsData": {
-            "oauthTokenApi": {}
-          },
-          "mailboxId": []
-        },
-        "options": {
-          "keepMessages": true,
-          "filter": {
-            "subject": {
-              "keywords": [
-                "CONFIRMAR",
-                "CANCELAR",
-                "recordatorio",
-                "cita"
-              ]
-            }
-          }
-        }
+        "httpMethod": "GET",
+        "path": "confirm/:appointmentId",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "id": "email-trigger",
-      "name": "Email Trigger",
-      "type": "n8n-nodes-base.emailReadImap",
-      "typeVersion": 1,
+      "id": "webhook",
+      "name": "Webhook - Confirmar/Cancelar",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
       "position": [250, 300]
     },
     {
       "parameters": {
-        "jsCode": "const body = $input.item.json.text || $input.item.json.body || '';\nconst normalized = body.toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '');\n\n// Extract appointmentId from body: format \"Appointment ID: <uuid>\"\nconst idMatch = body.match(/Appointment ID:\\s*([a-f0-9-]{36})/i);\n$input.item.json.appointmentId = idMatch ? idMatch[1] : null;\n$input.item.json.action = null;\n\nif (normalized.includes('CONFIRMAR')) {\n  $input.item.json.action = 'confirmar';\n} else if (normalized.includes('CANCELAR')) {\n  $input.item.json.action = 'cancelar';\n}\n\nreturn $input.item;",
+        "jsCode": "const appointmentId = $input.item.json.params?.appointmentId || null;\nconst action = ($input.item.json.query?.action || '').toLowerCase();\nconst valid = !!appointmentId && ['confirmar','cancelar'].includes(action);\n$input.item.json.appointmentId = appointmentId;\n$input.item.json.action = action;\n$input.item.json.valid = valid;\nreturn $input.item;",
         "options": {}
       },
-      "id": "parse-action",
-      "name": "Code - Parsear Acción",
+      "id": "parse",
+      "name": "Code - Parsear",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [500, 300]
@@ -51,64 +29,42 @@
       "parameters": {
         "rule": {
           "conditions": {
-            "options": {
-              "caseSensitive": false
-            },
-            "conditions": [
-              {
-                "id": "condition-uuid",
-                "name": "Condition",
-                "value1": "={{ $json.appointmentId }}",
-                "operation": "isNotEmpty"
-              }
-            ],
+            "conditions": [{ "id": "c1", "value1": "={{ $json.valid }}", "operation": "equals", "value2": true }],
             "combinator": "and"
           },
           "options": {}
         },
         "options": {}
       },
-      "id": "if-uuid-guard",
-      "name": "IF - UUID válido",
+      "id": "if-valid",
+      "name": "IF - Válido",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [750, 300]
     },
     {
       "parameters": {
-        "jsCode": "const from = $input.item.json.from || 'unknown';\nconst subject = $input.item.json.subject || '';\nconst body = ($input.item.json.text || $input.item.json.body || '').substring(0, 200);\nconst timestamp = new Date().toISOString();\nconsole.error('[confirmacion] invalid_appointment_id', JSON.stringify({ from, subject, timestamp, body_excerpt: body }));\nreturn $input.item;",
-        "options": {}
+        "options": { "responseCode": 400, "responseData": "<html><body><h2>Link inválido</h2><p>El link no es válido o ya expiró.</p></body></html>", "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "text/html" }] } }
       },
-      "id": "log-error",
-      "name": "Code - Log Error",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "id": "respond-400",
+      "name": "400 - Inválido",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
       "position": [1000, 500]
     },
     {
       "parameters": {
         "rule": {
           "conditions": {
-            "options": {
-              "caseSensitive": false
-            },
-            "conditions": [
-              {
-                "id": "condition-confirm",
-                "name": "Condition",
-                "value1": "={{ $json.action }}",
-                "operation": "equals",
-                "value2": "confirmar"
-              }
-            ],
-            "combinator": "or"
+            "conditions": [{ "id": "c2", "value1": "={{ $json.action }}", "operation": "equals", "value2": "confirmar" }],
+            "combinator": "and"
           },
           "options": {}
         },
         "options": {}
       },
-      "id": "if-confirm",
-      "name": "IF - Confirmar",
+      "id": "if-action",
+      "name": "IF - Acción",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [1000, 150]
@@ -116,125 +72,73 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1::uuid",
-        "options": {
-          "queryReplacement": "={{ $json.appointmentId }}"
-        }
+        "query": "UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1::uuid AND deleted_at IS NULL",
+        "options": { "queryReplacement": "={{ $json.appointmentId }}" }
       },
-      "id": "confirmar",
-      "name": "PostgreSQL - Confirmar",
+      "id": "pg-confirm",
+      "name": "PG - Confirmar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 100]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $json.from }}",
-        "subject": "✅ Asistencia confirmada",
-        "emailType": "text",
-        "message": "=Tu asistencia ha sido confirmada.\n\nNos vemos pronto.",
-        "options": {}
-      },
-      "id": "email-confirmed",
-      "name": "Gmail - Confirmado",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [1500, 100]
+      "position": [1250, 50]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1::uuid",
-        "options": {
-          "queryReplacement": "={{ $json.appointmentId }}"
-        }
+        "query": "UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1::uuid AND deleted_at IS NULL",
+        "options": { "queryReplacement": "={{ $json.appointmentId }}" }
       },
-      "id": "cancelar",
-      "name": "PostgreSQL - Cancelar",
+      "id": "pg-cancel",
+      "name": "PG - Cancelar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 300]
+      "position": [1250, 250]
     },
     {
       "parameters": {
-        "sendTo": "={{ $json.from }}",
-        "subject": "❌ Cita cancelada",
-        "emailType": "text",
-        "message": "=Tu cita ha sido cancelada.\n\nCuando desees reprogramar, contáctanos.",
-        "options": {}
+        "options": {
+          "responseCode": 200,
+          "responseData": "<html><head><meta charset='utf-8'><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0fdf4}.box{text-align:center;padding:40px;border-radius:12px;background:white;box-shadow:0 2px 12px rgba(0,0,0,.08)}</style></head><body><div class='box'><h1>✅</h1><h2>¡Asistencia confirmada!</h2><p>Tu cita ha sido confirmada correctamente.</p><p>Nos vemos pronto.</p></div></body></html>",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "text/html" }] }
+        }
       },
-      "id": "email-cancelled",
-      "name": "Gmail - Cancelado",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.2,
-      "position": [1500, 300]
+      "id": "respond-confirmed",
+      "name": "Respuesta - Confirmado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1500, 50]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "<html><head><meta charset='utf-8'><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#fef2f2}.box{text-align:center;padding:40px;border-radius:12px;background:white;box-shadow:0 2px 12px rgba(0,0,0,.08)}</style></head><body><div class='box'><h1>❌</h1><h2>Cita cancelada</h2><p>Tu cita ha sido cancelada.</p><p>Cuando quieras reprogramar, contáctanos.</p></div></body></html>",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "text/html" }] }
+        }
+      },
+      "id": "respond-cancelled",
+      "name": "Respuesta - Cancelado",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1500, 250]
     }
   ],
   "connections": {
-    "Email Trigger": {
-      "main": [[
-        {
-          "node": "Code - Parsear Acción",
-          "type": "main"
-        }
-      ]]
-    },
-    "Code - Parsear Acción": {
-      "main": [[
-        {
-          "node": "IF - UUID válido",
-          "type": "main"
-        }
-      ]]
-    },
-    "IF - UUID válido": {
+    "Webhook - Confirmar/Cancelar": { "main": [[{ "node": "Code - Parsear", "type": "main" }]] },
+    "Code - Parsear": { "main": [[{ "node": "IF - Válido", "type": "main" }]] },
+    "IF - Válido": {
       "main": [
-        [
-          {
-            "node": "IF - Confirmar",
-            "type": "main"
-          }
-        ],
-        [
-          {
-            "node": "Code - Log Error",
-            "type": "main"
-          }
-        ]
+        [{ "node": "IF - Acción", "type": "main" }],
+        [{ "node": "400 - Inválido", "type": "main" }]
       ]
     },
-    "IF - Confirmar": {
+    "IF - Acción": {
       "main": [
-        [
-          {
-            "node": "PostgreSQL - Confirmar",
-            "type": "main"
-          }
-        ],
-        [
-          {
-            "node": "PostgreSQL - Cancelar",
-            "type": "main"
-          }
-        ]
+        [{ "node": "PG - Confirmar", "type": "main" }],
+        [{ "node": "PG - Cancelar", "type": "main" }]
       ]
     },
-    "PostgreSQL - Confirmar": {
-      "main": [[
-        {
-          "node": "Gmail - Confirmado",
-          "type": "main"
-        }
-      ]]
-    },
-    "PostgreSQL - Cancelar": {
-      "main": [[
-        {
-          "node": "Gmail - Cancelado",
-          "type": "main"
-        }
-      ]]
-    }
+    "PG - Confirmar": { "main": [[{ "node": "Respuesta - Confirmado", "type": "main" }]] },
+    "PG - Cancelar": { "main": [[{ "node": "Respuesta - Cancelado", "type": "main" }]] }
   },
   "active": true,
   "settings": {},
