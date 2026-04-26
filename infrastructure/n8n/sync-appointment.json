@@ -1,26 +1,23 @@
 {
-  "name": "Google Sheets - Sync Citas",
+  "name": "Google Sheets - Sync por Webhook",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
         "path": "sync-appointment",
-        "responseMode": "onReceived",
+        "responseMode": "responseNode",
         "options": {}
       },
       "id": "webhook-trigger",
       "name": "Webhook - Nueva Cita",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        250,
-        300
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at,\n  a.appointment_type,\n  a.status,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  a.google_meet_link,\n  a.session_notes,\n  a.created_at,\n  NOW() AS sync_timestamp\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.id = $1::uuid\nLIMIT 1",
+        "query": "SELECT\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS fecha,\n  TO_CHAR(a.scheduled_at AT TIME ZONE 'America/Bogota', 'HH12:MI AM')  AS hora,\n  p.first_name || ' ' || p.last_name                                   AS paciente,\n  p.email,\n  p.phone                                                               AS telefono,\n  a.appointment_type                                                    AS tipo,\n  a.duration_minutes                                                    AS duracion_min,\n  a.status                                                              AS estado,\n  COALESCE(a.google_meet_link, '')                                      AS meet_link,\n  COALESCE(a.google_calendar_event_id, '')                              AS calendar_id,\n  COALESCE(a.session_notes, '')                                         AS notas,\n  TO_CHAR(a.created_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD HH12:MI AM') AS creada_en\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE a.id = $1::uuid\n  AND a.deleted_at IS NULL\nLIMIT 1",
         "options": {
           "queryReplacement": "={{ $json.body.appointment_id }}"
         }
@@ -29,79 +26,53 @@
       "name": "PostgreSQL - Obtener Cita",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [
-        500,
-        300
-      ]
+      "position": [500, 300]
     },
     {
       "parameters": {
         "operation": "append",
-        "sheetId": "{{$env.GOOGLE_SHEET_ID}}",
-        "range": "A:M",
-        "options": {
-          "valueInputMode": "USER_ENTERED"
-        }
+        "documentId": { "value": "1L6BNKKTtJNE4xk11_Wl4u4FbyJCluQSnV_203bnxWPg", "mode": "id" },
+        "sheetName": { "value": "Citas", "mode": "name" },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Fecha":        "={{ $json.fecha }}",
+            "Hora":         "={{ $json.hora }}",
+            "Paciente":     "={{ $json.paciente }}",
+            "Email":        "={{ $json.email }}",
+            "Teléfono":     "={{ $json.telefono }}",
+            "Tipo":         "={{ $json.tipo }}",
+            "Duración":     "={{ $json.duracion_min }}",
+            "Estado":       "={{ $json.estado }}",
+            "Meet":         "={{ $json.meet_link }}",
+            "Calendar ID":  "={{ $json.calendar_id }}",
+            "Notas":        "={{ $json.notas }}",
+            "Creada":       "={{ $json.creada_en }}"
+          }
+        },
+        "options": {}
       },
       "id": "append-sheet",
       "name": "Google Sheets - Nueva Fila",
       "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 3,
-      "position": [
-        750,
-        300
-      ]
+      "typeVersion": 4,
+      "position": [750, 300]
     },
     {
       "parameters": {
-        "response": {
-          "response": {
-            "response": "={{ { success: true, synced: $json } }}"
-          }
-        },
-        "options": {}
+        "options": { "responseCode": 200, "responseData": "={\"success\":true}" }
       },
       "id": "respond",
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [
-        1000,
-        300
-      ]
+      "position": [1000, 300]
     }
   ],
   "connections": {
-    "Webhook - Nueva Cita": {
-      "main": [
-        [
-          {
-            "node": "PostgreSQL - Obtener Cita",
-            "type": "main"
-          }
-        ]
-      ]
-    },
-    "PostgreSQL - Obtener Cita": {
-      "main": [
-        [
-          {
-            "node": "Google Sheets - Nueva Fila",
-            "type": "main"
-          }
-        ]
-      ]
-    },
-    "Google Sheets - Nueva Fila": {
-      "main": [
-        [
-          {
-            "node": "Respond",
-            "type": "main"
-          }
-        ]
-      ]
-    }
+    "Webhook - Nueva Cita": { "main": [[{ "node": "PostgreSQL - Obtener Cita", "type": "main" }]] },
+    "PostgreSQL - Obtener Cita": { "main": [[{ "node": "Google Sheets - Nueva Fila", "type": "main" }]] },
+    "Google Sheets - Nueva Fila": { "main": [[{ "node": "Respond", "type": "main" }]] }
   },
   "active": true,
   "settings": {},

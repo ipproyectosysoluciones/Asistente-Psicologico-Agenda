@@ -44,7 +44,7 @@
     },
     {
       "parameters": {
-        "sendTo": "={{ $env.NOTIFICATION_EMAIL }}",
+        "sendTo": "bladyparra@gmail.com",
         "subject": "=⚠️ No-show registrado: {{ $json.patient_name }}",
         "emailType": "text",
         "message": "=Se marcó como no-show:\n\nPaciente: {{ $json.patient_name }}\nFecha: {{ $json.scheduled_at }}\nTipo: {{ $json.appointment_type }}\n\nID: {{ $json.id }}",

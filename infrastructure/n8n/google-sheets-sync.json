@@ -45,7 +45,7 @@
     {
       "parameters": {
         "operation": "append",
-        "documentId": { "value": "={{ $env.GOOGLE_SHEET_ID }}", "mode": "id" },
+        "documentId": { "value": "1L6BNKKTtJNE4xk11_Wl4u4FbyJCluQSnV_203bnxWPg", "mode": "id" },
         "sheetName": { "value": "Citas", "mode": "name" },
         "columns": {
           "mappingMode": "defineBelow",
