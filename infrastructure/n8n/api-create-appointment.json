@@ -2,116 +2,56 @@
   "name": "API - Create Appointment",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "appointments",
-        "responseMode": "lastNode",
-        "options": {}
-      },
-      "id": "webhook",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "parameters": { "httpMethod": "POST", "path": "appointments", "responseMode": "responseNode", "options": {} },
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 300]
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "options": {
-              "caseSensitive": false,
-              "leftValue": "",
-              "typeValidation": "loose"
-            },
-            "conditions": [
-              {
-                "id": "condition-patient",
-                "name": "Condition",
-                "value1": "={{ $json.body.patient_id }}",
-                "operation": "set",
-                "value2": null
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
         "options": {}
       },
-      "id": "if-patient",
-      "name": "IF - Patient Exists",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [500, 300]
+      "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-jwt", "name": "IF - JWT válido", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 300]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401", "name": "Respond 401", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 500]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\nVALUES (\n  $1::uuid,\n  $2::uuid,\n  $3::timestamptz,\n  $4::integer,\n  $5,\n  'scheduled',\n  NOW(),\n  NOW()\n)\nRETURNING id, scheduled_at, appointment_type",
-        "options": {
-          "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}"
-        }
+        "query": "INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\nVALUES ($1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5, 'scheduled', NOW(), NOW())\nRETURNING id, scheduled_at, appointment_type",
+        "options": { "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}" }
       },
-      "id": "create-appointment",
-      "name": "PostgreSQL - Crear Cita",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
-      "position": [750, 150]
+      "id": "create-appointment", "name": "PostgreSQL - Crear Cita", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
     },
     {
       "parameters": {
-        "to": "={{ $json.body.email }}",
+        "sendTo": "={{ $json.body?.email }}",
         "subject": "📅 Tu cita ha sido programada",
-        "body": "=Hola,\n\nTu cita ha sido programada exitosamente.\n\n📅 Fecha: {{ $json.scheduled_at }}\n📋 Tipo: {{ $json.appointment_type }}\n\nTe enviaremos un recordatorio antes.\n\nSaludos",
+        "emailType": "text",
+        "message": "=Hola,\n\nTu cita ha sido programada exitosamente.\n\n📅 Fecha: {{ $json.scheduled_at }}\n📋 Tipo: {{ $json.appointment_type }}\n\nTe enviaremos un recordatorio antes.\n\nSaludos",
         "options": {}
       },
-      "id": "email-confirm",
-      "name": "Gmail - Confirmación",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 150]
+      "id": "email-confirm", "name": "Gmail - Confirmación", "type": "n8n-nodes-base.gmail", "typeVersion": 2.2, "position": [1250, 150]
     },
     {
-      "parameters": {
-        "to": "={{ $json.body.email }}",
-        "subject": "⚠️ Error al agendar",
-        "body": "=Hola,\n\nLamentablemente no pudimos agendar la cita. Por favor contactanos.\n\nSaludos",
-        "options": {}
-      },
-      "id": "error-email",
-      "name": "Gmail - Error",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1000, 450]
-    },
-    {
-      "parameters": {
-        "response": {
-          "response": {
-            "response": "={{ { success: true, message: 'Cita programada' } }}"
-          }
-        },
-        "options": {}
-      },
-      "id": "respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1250, 300]
+      "parameters": { "options": { "responseCode": 201, "responseData": "={{ JSON.stringify({ success: true, message: 'Cita programada' }) }}" } },
+      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1500, 150]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "IF - Patient Exists", "type": "main" }]] },
-    "IF - Patient Exists": {
-      "main": [
-        [{ "node": "PostgreSQL - Crear Cita", "type": "main" }],
-        [{ "node": "Gmail - Error", "type": "main" }]
-      ]
-    },
+    "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
+    "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
+    "IF - JWT válido": { "main": [[{ "node": "PostgreSQL - Crear Cita", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
     "PostgreSQL - Crear Cita": { "main": [[{ "node": "Gmail - Confirmación", "type": "main" }]] },
     "Gmail - Confirmación": { "main": [[{ "node": "Respond", "type": "main" }]] }
   },
-  "active": true,
-  "settings": {},
-  "id": "api-create-appointment"
+  "active": true, "settings": {}, "id": "api-create-appointment"
 }

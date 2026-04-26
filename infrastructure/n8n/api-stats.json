@@ -2,51 +2,47 @@
   "name": "API - Stats",
   "nodes": [
     {
+      "parameters": { "httpMethod": "GET", "path": "stats", "responseMode": "responseNode", "options": {} },
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 300]
+    },
+    {
       "parameters": {
-        "httpMethod": "GET",
-        "path": "stats",
-        "responseMode": "lastNode",
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
         "options": {}
       },
-      "id": "webhook",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-jwt", "name": "IF - JWT válido", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 300]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401", "name": "Respond 401", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 500]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  COUNT(*) FILTER (WHERE status IN ('scheduled', 'confirmed') AND scheduled_at::date = CURRENT_DATE)::int AS today_appointments,\n  COUNT(*) FILTER (WHERE status = 'completed' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_completed,\n  COUNT(*) FILTER (WHERE status = 'no_show' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_noshow,\n  COUNT(*) FILTER (WHERE status = 'cancelled' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_cancelled,\n  (SELECT COUNT(*)::int FROM patients WHERE deleted_at IS NULL) AS total_patients,\n  (SELECT COUNT(*)::int FROM patients WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()))::int AS new_patients_month",
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE status IN ('scheduled', 'confirmed') AND scheduled_at::date = CURRENT_DATE)::int AS today_appointments,\n  COUNT(*) FILTER (WHERE status = 'completed' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_completed,\n  COUNT(*) FILTER (WHERE status = 'no_show' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_noshow,\n  COUNT(*) FILTER (WHERE status = 'cancelled' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_cancelled,\n  (SELECT COUNT(*)::int FROM patients WHERE deleted_at IS NULL) AS total_patients,\n  (SELECT COUNT(*)::int FROM patients WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())) AS new_patients_month\nFROM appointments\nWHERE deleted_at IS NULL",
         "options": {}
       },
-      "id": "postgres",
-      "name": "PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
-      "position": [500, 300]
+      "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
     },
     {
       "parameters": {
-        "response": {
-          "response": {
-            "response": "={{ $json }}"
-          }
-        },
-        "options": {}
+        "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" }
       },
-      "id": "respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [750, 300]
+      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1250, 150]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
+    "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
+    "IF - JWT válido": { "main": [[{ "node": "PostgreSQL", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
     "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
   },
-  "active": true,
-  "settings": {},
-  "id": "api-stats"
+  "active": true, "settings": {}, "id": "api-stats"
 }

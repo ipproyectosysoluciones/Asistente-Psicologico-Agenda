@@ -124,20 +124,21 @@
       "id": "confirmar",
       "name": "PostgreSQL - Confirmar",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [1250, 100]
     },
     {
       "parameters": {
-        "to": "={{ $json.from }}",
+        "sendTo": "={{ $json.from }}",
         "subject": "✅ Asistencia confirmada",
-        "body": "=Tu asistencia ha sido confirmada.\n\nNos vemos pronto.",
+        "emailType": "text",
+        "message": "=Tu asistencia ha sido confirmada.\n\nNos vemos pronto.",
         "options": {}
       },
       "id": "email-confirmed",
       "name": "Gmail - Confirmado",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1500, 100]
     },
     {
@@ -151,20 +152,21 @@
       "id": "cancelar",
       "name": "PostgreSQL - Cancelar",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [1250, 300]
     },
     {
       "parameters": {
-        "to": "={{ $json.from }}",
+        "sendTo": "={{ $json.from }}",
         "subject": "❌ Cita cancelada",
-        "body": "=Tu cita ha sido cancelada.\n\nCuando desees reprogramar, contáctanos.",
+        "emailType": "text",
+        "message": "=Tu cita ha sido cancelada.\n\nCuando desees reprogramar, contáctanos.",
         "options": {}
       },
       "id": "email-cancelled",
       "name": "Gmail - Cancelado",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1500, 300]
     }
   ],

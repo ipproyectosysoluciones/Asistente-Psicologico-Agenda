@@ -27,7 +27,7 @@
       "id": "get-appointments",
       "name": "PostgreSQL - Citas nuevas (última hora)",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [500, 300]
     },
     {
@@ -86,33 +86,35 @@
       "id": "mark-synced",
       "name": "PostgreSQL - Mark synced",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [1000, 450]
     },
     {
       "parameters": {
-        "to": "{{ $env.NOTIFICATION_EMAIL }}",
+        "sendTo": "={{ $env.NOTIFICATION_EMAIL }}",
         "subject": "={{ '📊 Sync: ' + $input.all().length + ' nuevas citas' }}",
-        "body": "={{ $input.all().length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $input.all().map(x => x.json.scheduled_at + ' - ' + x.json.first_name + ' ' + x.json.last_name + ' (' + x.json.appointment_type + ')').join('\n') }}",
+        "emailType": "text",
+        "message": "={{ $input.all().length + ' nuevas citas sincronizadas a Google Sheets. \n\n' + $input.all().map(x => x.json.scheduled_at + ' - ' + x.json.first_name + ' ' + x.json.last_name + ' (' + x.json.appointment_type + ')').join('\n') }}",
         "options": {}
       },
       "id": "email-notify",
       "name": "Gmail - Notificación",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1250, 150]
     },
     {
       "parameters": {
-        "to": "{{ $env.NOTIFICATION_EMAIL }}",
+        "sendTo": "={{ $env.NOTIFICATION_EMAIL }}",
         "subject": "📭 No hay nuevas citas para sync",
-        "body": "No se encontraron citas nuevas para sincronizar en la última hora.",
+        "emailType": "text",
+        "message": "No se encontraron citas nuevas para sincronizar en la última hora.",
         "options": {}
       },
       "id": "email-empty",
       "name": "Gmail - Sin nuevas",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1250, 450]
     }
   ],

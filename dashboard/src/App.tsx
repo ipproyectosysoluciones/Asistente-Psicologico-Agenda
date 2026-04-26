@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
 import AppointmentsPage from '@/pages/appointments/AppointmentsPage'
@@ -14,8 +15,8 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/landing" element={<LandingPage />} />
-        <Route path="/capture" element={<CapturePage />} />
+        <Route path="/landing" element={<ErrorBoundary serviceName="Landing"><LandingPage /></ErrorBoundary>} />
+        <Route path="/capture" element={<ErrorBoundary serviceName="Capture"><CapturePage /></ErrorBoundary>} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/landing-pages" element={<Navigate to="/landing" replace />} />
 
@@ -28,10 +29,10 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="appointments" element={<AppointmentsPage />} />
-          <Route path="patients" element={<PatientsPage />} />
-          <Route path="leads" element={<LeadsPage />} />
+          <Route path="dashboard" element={<ErrorBoundary serviceName="Dashboard"><DashboardPage /></ErrorBoundary>} />
+          <Route path="appointments" element={<ErrorBoundary serviceName="Citas"><AppointmentsPage /></ErrorBoundary>} />
+          <Route path="patients" element={<ErrorBoundary serviceName="Pacientes"><PatientsPage /></ErrorBoundary>} />
+          <Route path="leads" element={<ErrorBoundary serviceName="Leads"><LeadsPage /></ErrorBoundary>} />
         </Route>
       </Routes>
     </AuthProvider>

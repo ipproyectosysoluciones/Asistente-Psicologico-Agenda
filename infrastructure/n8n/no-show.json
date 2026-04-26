@@ -27,7 +27,7 @@
       "id": "get-no-show",
       "name": "PostgreSQL - Citas Vencidas",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [500, 300]
     },
     {
@@ -41,20 +41,21 @@
       "id": "mark-noshow",
       "name": "PostgreSQL - Marcar No-Show",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [750, 300]
     },
     {
       "parameters": {
-        "to": "={{ $json.email }}",
+        "sendTo": "={{ $json.email }}",
         "subject": "📋 Cita marcada como inasistencia",
-        "body": "=Hola {{ $json.first_name }},\n\nTu cita del {{ $json.scheduled_at }} fue marcada como inasistencia (no_show) porque no te presentaste.\n\nSi crees que es un error o deseas reprogramar, contactanos.\n\nSaludos",
+        "emailType": "text",
+        "message": "=Hola {{ $json.first_name }},\n\nTu cita del {{ $json.scheduled_at }} fue marcada como inasistencia (no_show) porque no te presentaste.\n\nSi crees que es un error o deseas reprogramar, contactanos.\n\nSaludos",
         "options": {}
       },
       "id": "notify-noshow",
       "name": "Gmail - Notificar No-Show",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.2,
       "position": [1000, 300]
     }
   ],
