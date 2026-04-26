@@ -12,19 +12,27 @@
       "name": "Webhook - Nueva Cita",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
         "query": "SELECT COUNT(*)::int AS conflicts\nFROM appointments\nWHERE psychologist_id = (SELECT id FROM psychologists LIMIT 1)\n  AND status NOT IN ('cancelled', 'no_show')\n  AND deleted_at IS NULL\n  AND scheduled_at < $1::timestamptz\n  AND scheduled_at + (duration_minutes || ' minutes')::INTERVAL + '10 minutes'::INTERVAL > $2::timestamptz",
-        "options": { "queryReplacement": "={{ $json.body.scheduled_end }},={{ $json.body.scheduled_at }}" }
+        "options": {
+          "queryReplacement": "={{ $json.body.scheduled_end }},={{ $json.body.scheduled_at }}"
+        }
       },
       "id": "check-availability",
       "name": "PostgreSQL - Verificar Disponibilidad",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [500, 300]
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -54,7 +62,10 @@
       "name": "IF - Disponible?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     },
     {
       "parameters": {
@@ -68,7 +79,10 @@
       "name": "PostgreSQL - Crear Cita",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1000, 300]
+      "position": [
+        1000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -82,51 +96,64 @@
       "name": "Google Calendar - Crear Evento",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.1,
-      "position": [1000, 500]
+      "position": [
+        1000,
+        500
+      ]
     },
     {
       "parameters": {
-        "to": "={{ $json.body.email }}",
+        "sendTo": "={{ $json.body.email }}",
         "subject": "✅ Tu cita ha sido confirmada",
-        "body": "=Hola {{ $json.body.patient_name }},\n\nTu cita ha sido confirmada:\n📅 Fecha: {{ $json.body.scheduled_date }}\n⏰ Hora: {{ $json.body.scheduled_time }}\n{{ $json.meet_link ? '\n🔗 Meet: ' + $json.meet_link : '' }}\n\nPara cancelar o reprogramar, contactanos con 24h de anticipación.\n\nSaludos",
+        "message": "=Hola {{ $json.body.patient_name }},\n\nTu cita ha sido confirmada:\n📅 Fecha: {{ $json.body.scheduled_date }}\n⏰ Hora: {{ $json.body.scheduled_time }}\n{{ $json.meet_link ? \"\n🔗 Meet: \" + $json.meet_link : \"\" }}\n\nPara cancelar o reprogramar, contactanos con 24h de anticipación.\n\nSaludos",
         "options": {}
       },
       "id": "send-confirmation",
       "name": "Gmail - Confirmación",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1250, 300]
+      "typeVersion": 2.1,
+      "position": [
+        1250,
+        300
+      ]
     },
     {
       "parameters": {
-        "to": "={{ $json.body.email }}",
+        "sendTo": "={{ $json.body.email }}",
         "subject": "⚠️ Horario No Disponible",
-        "body": "=Hola {{ $json.body.patient_name }},\n\nLamentamos informarte que el horario solicitado no está disponible.\n\nPor favor, prueba con otro horario.\n\nSaludos",
+        "message": "=Hola {{ $json.body.patient_name }},\n\nLamentamos informarte que el horario solicitado no está disponible.\n\nPor favor, prueba con otro horario.\n\nSaludos",
         "options": {}
       },
       "id": "send-unavailable",
       "name": "Gmail - No Disponible",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
-      "position": [1250, 450]
+      "typeVersion": 2.1,
+      "position": [
+        1250,
+        450
+      ]
     }
   ],
   "connections": {
     "Webhook - Nueva Cita": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Verificar Disponibilidad",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Verificar Disponibilidad",
+            "type": "main"
+          }
+        ]
+      ]
     },
     "PostgreSQL - Verificar Disponibilidad": {
-      "main": [[
-        {
-          "node": "IF - Disponible?",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "IF - Disponible?",
+            "type": "main"
+          }
+        ]
+      ]
     },
     "IF - Disponible?": {
       "main": [
@@ -145,20 +172,24 @@
       ]
     },
     "PostgreSQL - Crear Cita": {
-      "main": [[
-        {
-          "node": "Google Calendar - Crear Evento",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Google Calendar - Crear Evento",
+            "type": "main"
+          }
+        ]
+      ]
     },
     "Google Calendar - Crear Evento": {
-      "main": [[
-        {
-          "node": "Gmail - Confirmación",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Gmail - Confirmación",
+            "type": "main"
+          }
+        ]
+      ]
     }
   },
   "active": true,

@@ -37,15 +37,15 @@
     },
     {
       "parameters": {
-        "to": "{{$json.body.email}}",
+        "sendTo": "={{ $json.body.email }}",
         "subject": "Bienvenido a tu Asistente Psicológico",
-        "body": "Hola {{$json.body.first_name}},\n\nGracias por registrarte. Un operador te contactará pronto para confirmar tu primera cita.\n\nSaludos,\nAsistente Psicológico",
+        "message": "=Hola {{ $json.body.first_name }},\n\nGracias por registrarte. Un operador te contactará pronto para confirmar tu primera cita.\n\nSaludos,\nAsistente Psicológico",
         "options": {}
       },
       "id": "email-confirm",
       "name": "Email - Confirmation",
       "type": "n8n-nodes-base.gmail",
-      "typeVersion": 1,
+      "typeVersion": 2.1,
       "position": [
         750,
         300
