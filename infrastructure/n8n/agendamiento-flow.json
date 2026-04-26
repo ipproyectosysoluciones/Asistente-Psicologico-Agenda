@@ -17,13 +17,13 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT COUNT(*)::int AS conflicts\nFROM appointments\nWHERE psychologist_id = (SELECT id FROM psychologists LIMIT 1)\n  AND status NOT IN ('cancelled', 'no_show')\n  AND deleted_at IS NULL\n  AND scheduled_at < '{{ $json.body.scheduled_end }}'\n  AND scheduled_at + (duration_minutes || ' minutes')::INTERVAL + '10 minutes'::INTERVAL > '{{ $json.body.scheduled_at }}'",
-        "options": {}
+        "query": "SELECT COUNT(*)::int AS conflicts\nFROM appointments\nWHERE psychologist_id = (SELECT id FROM psychologists LIMIT 1)\n  AND status NOT IN ('cancelled', 'no_show')\n  AND deleted_at IS NULL\n  AND scheduled_at < $1::timestamptz\n  AND scheduled_at + (duration_minutes || ' minutes')::INTERVAL + '10 minutes'::INTERVAL > $2::timestamptz",
+        "options": { "queryReplacement": "={{ $json.body.scheduled_end }},={{ $json.body.scheduled_at }}" }
       },
       "id": "check-availability",
       "name": "PostgreSQL - Verificar Disponibilidad",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [500, 300]
     },
     {
@@ -67,7 +67,7 @@
       "id": "create-appointment",
       "name": "PostgreSQL - Crear Cita",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
+      "typeVersion": 2.4,
       "position": [1000, 300]
     },
     {

@@ -12,7 +12,10 @@
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "webhookId": ""
     },
     {
@@ -26,8 +29,11 @@
       "id": "postgres-insert",
       "name": "PostgreSQL - Insert Patient",
       "type": "n8n-nodes-base.postgres",
-      "typeVersion": 1.1,
-      "position": [500, 300]
+      "typeVersion": 2.4,
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -40,25 +46,32 @@
       "name": "Email - Confirmation",
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 1,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     }
   ],
   "connections": {
     "Webhook Trigger": {
-      "main": [[
-        {
-          "node": "PostgreSQL - Insert Patient",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "PostgreSQL - Insert Patient",
+            "type": "main"
+          }
+        ]
+      ]
     },
     "PostgreSQL - Insert Patient": {
-      "main": [[
-        {
-          "node": "Email - Confirmation",
-          "type": "main"
-        }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Email - Confirmation",
+            "type": "main"
+          }
+        ]
+      ]
     }
   },
   "active": true,
