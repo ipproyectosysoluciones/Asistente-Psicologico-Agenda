@@ -1,0 +1,84 @@
+{
+  "name": "API - HC Demographics",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "GET", "path": "hc/demographics/:patientId", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-get", "name": "Webhook GET", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 150]
+    },
+    {
+      "parameters": { "httpMethod": "POST", "path": "hc/demographics/:patientId", "responseMode": "responseNode", "options": {} },
+      "id": "webhook-post", "name": "Webhook POST", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 450]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-get", "name": "JWT GET", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-post", "name": "JWT POST", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 450]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-jwt-get", "name": "IF JWT GET", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 150]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c2", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-jwt-post", "name": "IF JWT POST", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 450]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401-get", "name": "401 GET", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 300]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401-post", "name": "401 POST", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM demographics WHERE patient_id = $1::uuid AND is_current = true LIMIT 1",
+        "options": { "queryReplacement": "={{ $json.params.patientId }}" }
+      },
+      "id": "pg-get", "name": "PG GET", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 0]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE demographics SET is_current = false WHERE patient_id = $1::uuid AND is_current = true;\nINSERT INTO demographics (patient_id, occupation, marital_status, number_of_children, education_level, religion, is_current)\nVALUES ($1::uuid, $2, $3, $4::integer, $5, $6, true)\nRETURNING *",
+        "options": { "queryReplacement": "={{ $json.params.patientId }},={{ $json.body.occupation }},={{ $json.body.marital_status }},={{ $json.body.number_of_children || null }},={{ $json.body.education_level }},={{ $json.body.religion }}" }
+      },
+      "id": "pg-upsert", "name": "PG UPSERT", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 450]
+    },
+    {
+      "parameters": { "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" } },
+      "id": "respond-get", "name": "Respond GET", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1250, 0]
+    },
+    {
+      "parameters": { "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" } },
+      "id": "respond-post", "name": "Respond POST", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1250, 450]
+    }
+  ],
+  "connections": {
+    "Webhook GET": { "main": [[{ "node": "JWT GET", "type": "main" }]] },
+    "Webhook POST": { "main": [[{ "node": "JWT POST", "type": "main" }]] },
+    "JWT GET": { "main": [[{ "node": "IF JWT GET", "type": "main" }]] },
+    "JWT POST": { "main": [[{ "node": "IF JWT POST", "type": "main" }]] },
+    "IF JWT GET": { "main": [[{ "node": "PG GET", "type": "main" }], [{ "node": "401 GET", "type": "main" }]] },
+    "IF JWT POST": { "main": [[{ "node": "PG UPSERT", "type": "main" }], [{ "node": "401 POST", "type": "main" }]] },
+    "PG GET": { "main": [[{ "node": "Respond GET", "type": "main" }]] },
+    "PG UPSERT": { "main": [[{ "node": "Respond POST", "type": "main" }]] }
+  },
+  "active": true, "settings": {}, "id": "api-hc-demographics"
+}
