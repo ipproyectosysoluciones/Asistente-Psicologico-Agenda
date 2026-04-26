@@ -2,94 +2,61 @@
   "name": "API - Patients",
   "nodes": [
     {
-      "parameters": {
-        "httpMethod": "GET",
-        "path": "patients",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "webhook",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [250, 300]
+      "parameters": { "httpMethod": "GET", "path": "patients", "responseMode": "responseNode", "options": {} },
+      "id": "webhook", "name": "Webhook", "type": "n8n-nodes-base.webhook", "typeVersion": 2, "position": [250, 300]
     },
     {
       "parameters": {
         "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\n\nif (!token) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'missing'; return $input.item; }\n\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'malformed'; return $input.item; }\n\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'invalid_sig'; return $input.item; }\n\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; $input.item.json.jwtError = 'expired'; return $input.item; }\n\n$input.item.json.jwtValid = true;\nreturn $input.item;",
         "options": {}
       },
-      "id": "jwt-verify",
-      "name": "Code - JWT Verify",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [500, 300]
+      "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }],
-            "combinator": "and"
-          },
-          "options": {}
-        },
+        "rule": { "conditions": { "conditions": [{ "id": "c1", "value1": "={{ $json.jwtValid }}", "operation": "equals", "value2": true }], "combinator": "and" }, "options": {} },
         "options": {}
       },
-      "id": "if-jwt",
-      "name": "IF - JWT válido",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [750, 300]
+      "id": "if-jwt", "name": "IF - JWT válido", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [750, 300]
+    },
+    {
+      "parameters": { "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" } },
+      "id": "respond-401", "name": "Respond 401", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1000, 500]
     },
     {
       "parameters": {
-        "options": { "responseCode": 401, "responseData": "={\"error\":\"Unauthorized\"}" }
+        "jsCode": "const q = $input.item.json.query || {};\nconst page = Math.max(1, parseInt(q.page || '1', 10));\nconst limit = Math.min(100, Math.max(1, parseInt(q.limit || '20', 10)));\n$input.item.json.pg_limit = limit;\n$input.item.json.pg_offset = (page - 1) * limit;\n$input.item.json.pg_page = page;\nreturn $input.item;",
+        "options": {}
       },
-      "id": "respond-401",
-      "name": "Respond 401",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1000, 500]
+      "id": "pagination", "name": "Code - Pagination Params", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000, 150]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  p.id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  p.date_of_birth,\n  p.gender,\n  p.consent_status,\n  p.first_appointment_at,\n  p.last_appointment_at,\n  p.total_sessions,\n  p.created_at,\n  COUNT(a.id)::int AS total_appointments\nFROM patients p\nLEFT JOIN appointments a ON a.patient_id = p.id AND a.deleted_at IS NULL\nWHERE p.deleted_at IS NULL\nGROUP BY p.id\nORDER BY p.created_at DESC\nLIMIT {{ $json.limit || 50 }} OFFSET {{ (($json.page || 1) - 1) * ($json.limit || 50) }}",
-        "options": {}
+        "query": "SELECT\n  p.id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  p.date_of_birth,\n  p.gender,\n  p.consent_status,\n  p.first_appointment_at,\n  p.last_appointment_at,\n  p.total_sessions,\n  p.created_at,\n  COUNT(a.id)::int AS total_appointments,\n  COUNT(*) OVER() AS total_count\nFROM patients p\nLEFT JOIN appointments a ON a.patient_id = p.id AND a.deleted_at IS NULL\nWHERE p.deleted_at IS NULL\nGROUP BY p.id\nORDER BY p.created_at DESC\nLIMIT $1 OFFSET $2",
+        "options": { "queryReplacement": "={{ $json.pg_limit }},={{ $json.pg_offset }}" }
       },
-      "id": "postgres",
-      "name": "PostgreSQL",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [1000, 150]
+      "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1250, 150]
     },
     {
       "parameters": {
-        "options": {
-          "responseCode": 200,
-          "responseData": "={{ JSON.stringify({ patients: $input.all().map(i => i.json), total: $input.all().length }) }}"
-        }
+        "jsCode": "const rows = $input.all();\nconst totalCount = rows.length > 0 ? Number(rows[0].json.total_count || 0) : 0;\nconst page = Number($('Code - Pagination Params').first().json.pg_page || 1);\nconst limit = Number($('Code - Pagination Params').first().json.pg_limit || 20);\nconst items = rows.map(r => { const { total_count, ...rest } = r.json; return rest; });\nreturn [{ json: { patients: items, total_count: totalCount, page, limit, total_pages: Math.ceil(totalCount / limit) } }];",
+        "options": {}
       },
-      "id": "respond",
-      "name": "Respond",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1250, 150]
+      "id": "build-response", "name": "Code - Build Response", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1500, 150]
+    },
+    {
+      "parameters": { "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" } },
+      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1750, 150]
     }
   ],
   "connections": {
     "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
     "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
-    "IF - JWT válido": {
-      "main": [
-        [{ "node": "PostgreSQL", "type": "main" }],
-        [{ "node": "Respond 401", "type": "main" }]
-      ]
-    },
-    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+    "IF - JWT válido": { "main": [[{ "node": "Code - Pagination Params", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
+    "Code - Pagination Params": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "PostgreSQL": { "main": [[{ "node": "Code - Build Response", "type": "main" }]] },
+    "Code - Build Response": { "main": [[{ "node": "Respond", "type": "main" }]] }
   },
-  "active": true,
-  "settings": {},
-  "id": "api-patients"
+  "active": true, "settings": {}, "id": "api-patients"
 }

@@ -67,8 +67,10 @@ function AppointmentDetailDialog({ appt, onClose }: { appt: Appointment; onClose
   )
 }
 
-async function fetchAppointments() {
-  return api.get('/appointments')
+const PAGE_SIZE = 20
+
+async function fetchAppointments(page: number) {
+  return api.get(`/appointments?page=${page}&limit=${PAGE_SIZE}`)
 }
 
 async function fetchPatients() {
@@ -97,11 +99,12 @@ const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secon
 export default function AppointmentsPage() {
   const [open, setOpen] = useState(false)
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null)
+  const [page, setPage] = useState(1)
   const queryClient = useQueryClient()
-  
+
   const { data: appointments, isLoading } = useQuery({
-    queryKey: ['appointments'],
-    queryFn: fetchAppointments,
+    queryKey: ['appointments', page],
+    queryFn: () => fetchAppointments(page),
     retry: false
   })
 
@@ -121,6 +124,8 @@ export default function AppointmentsPage() {
 
   const appts = appointments?.appointments ?? []
   const patients = patientsData?.patients ?? []
+  const totalPages = (appointments as any)?.total_pages ?? 1
+  const totalCount = (appointments as any)?.total_count ?? 0
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -205,7 +210,9 @@ export default function AppointmentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Todas las Citas</CardTitle>
+          <CardTitle className="text-base">
+            Todas las Citas {totalCount > 0 && <span className="text-muted-foreground font-normal text-sm">({totalCount})</span>}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -264,6 +271,19 @@ export default function AppointmentsPage() {
               )}
             </TableBody>
           </Table>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-muted-foreground">
+              <span>Página {page} de {totalPages}</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
+                  Anterior
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

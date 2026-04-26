@@ -25,24 +25,38 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\nORDER BY a.scheduled_at DESC\nLIMIT 50",
+        "jsCode": "const q = $input.item.json.query || {};\nconst page = Math.max(1, parseInt(q.page || '1', 10));\nconst limit = Math.min(100, Math.max(1, parseInt(q.limit || '20', 10)));\n$input.item.json.pg_limit = limit;\n$input.item.json.pg_offset = (page - 1) * limit;\n$input.item.json.pg_page = page;\nreturn $input.item;",
         "options": {}
       },
-      "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
+      "id": "pagination", "name": "Code - Pagination Params", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000, 150]
     },
     {
       "parameters": {
-        "options": { "responseCode": 200, "responseData": "={{ JSON.stringify({ appointments: $input.all().map(i => i.json), total: $input.all().length }) }}" }
+        "operation": "executeQuery",
+        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name,\n  COUNT(*) OVER() AS total_count\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\nORDER BY a.scheduled_at DESC\nLIMIT $1 OFFSET $2",
+        "options": { "queryReplacement": "={{ $json.pg_limit }},={{ $json.pg_offset }}" }
       },
-      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1250, 150]
+      "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1250, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nconst totalCount = rows.length > 0 ? Number(rows[0].json.total_count || 0) : 0;\nconst page = Number($('Code - Pagination Params').first().json.pg_page || 1);\nconst limit = Number($('Code - Pagination Params').first().json.pg_limit || 20);\nconst items = rows.map(r => { const { total_count, ...rest } = r.json; return rest; });\nreturn [{ json: { appointments: items, total_count: totalCount, page, limit, total_pages: Math.ceil(totalCount / limit) } }];",
+        "options": {}
+      },
+      "id": "build-response", "name": "Code - Build Response", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1500, 150]
+    },
+    {
+      "parameters": { "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" } },
+      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1750, 150]
     }
   ],
   "connections": {
     "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
     "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
-    "IF - JWT válido": { "main": [[{ "node": "PostgreSQL", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
-    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+    "IF - JWT válido": { "main": [[{ "node": "Code - Pagination Params", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
+    "Code - Pagination Params": { "main": [[{ "node": "PostgreSQL", "type": "main" }]] },
+    "PostgreSQL": { "main": [[{ "node": "Code - Build Response", "type": "main" }]] },
+    "Code - Build Response": { "main": [[{ "node": "Respond", "type": "main" }]] }
   },
   "active": true, "settings": {}, "id": "api-appointments"
 }
