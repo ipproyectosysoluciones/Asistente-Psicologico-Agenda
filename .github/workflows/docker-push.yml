@@ -33,9 +33,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-images: |
-             ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot
-             ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard
+          images: |
+            ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot
+            ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -46,7 +46,7 @@ images: |
         with:
           context: ./bot
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-bot:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -55,7 +55,7 @@ images: |
         with:
           context: ./dashboard
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-dashboard:latest
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard:latest
           build-args: |
             VITE_AUTH_USER=${{ secrets.VITE_AUTH_USER }}
             VITE_AUTH_PASS=${{ secrets.VITE_AUTH_PASS }}
