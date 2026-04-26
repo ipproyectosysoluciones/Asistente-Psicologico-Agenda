@@ -6,8 +6,8 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hours": 2
+              "field": "minutes",
+              "minutesInterval": 15
             }
           ]
         }
@@ -21,7 +21,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT\n  a.id,\n  a.scheduled_at,\n  p.first_name,\n  p.email,\n  a.status\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE\n  a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.scheduled_at < NOW() - INTERVAL '30 minutes'",
+        "query": "SELECT\n  a.id,\n  a.start_time,\n  p.first_name,\n  p.email,\n  a.status\nFROM appointments a\nJOIN patients p ON a.patient_id = p.id\nWHERE\n  a.status IN ('pending', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND a.start_time >= NOW() - INTERVAL '2 hours'\n  AND a.start_time <= NOW()",
         "options": {}
       },
       "id": "get-no-show",

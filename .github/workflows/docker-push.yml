@@ -56,6 +56,9 @@ jobs:
           context: ./dashboard
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/asistente-psicologico-dashboard:latest
+          build-args: |
+            VITE_AUTH_USER=${{ secrets.VITE_AUTH_USER }}
+            VITE_AUTH_PASS=${{ secrets.VITE_AUTH_PASS }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
