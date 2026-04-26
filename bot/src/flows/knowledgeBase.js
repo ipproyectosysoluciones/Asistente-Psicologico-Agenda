@@ -1,79 +1,91 @@
 import { addKeyword } from '@builderbot/bot'
 import { knowledgeService } from '../services/knowledgeBase.js'
 
-const kbCategories = {
-    'depresión': 'depresion',
-    'depresion': 'depresion',
-    'depressive': 'depresion',
-    'emociones': 'emociones',
-    'emotions': 'emociones',
-    'esquizofrenia': 'esquizofrenia',
-    'schizophrenia': 'esquizofrenia',
-    'ansiedad': 'ansiedad',
-    'anxiety': 'ansiedad',
-    'general': 'general'
+const CATEGORY_LABELS = {
+    horarios: 'Horarios',
+    ubicacion: 'Ubicación',
+    precios: 'Precios',
+    modalidad: 'Modalidad',
+    contacto: 'Contacto'
 }
 
-const knowledgeBaseFlow = addKeyword(['📚 Biblioteca', 'kb', 'knowledge', 'biblioteca'])
-    .addAnswer('📚 *Biblioteca de Recursos*\n\nTengo información sobre:\n\n• *Depresión* - Guías y manuales\n• *Emociones* - Regulación emocional\n• *Esquizofrenia* - Información clínica\n• *Ansiedad* - Manejo de ansiedad\n• *General* - Recursos varios\n\nEscribe el tema que te interesa:', { capture: true })
-    .addAction(async (ctx, { flowDynamic, fallBack }) => {
-        const input = ctx.body.toLowerCase().trim()
-        const category = kbCategories[input]
-        
-        if (!category) {
-            await fallBack('❌ No entendí. Escribe: Depresión, Emociones, Esquizofrenia, Ansiedad o General')
-            return
+const STATIC_FALLBACK = {
+    horarios:  'Atendemos de lunes a viernes de 9:00 a 18:00 h.',
+    ubicacion: 'Ofrecemos sesiones presenciales y en línea. Contactanos para más info.',
+    precios:   'Primera consulta: $60 USD (90 min). Seguimiento: $45 USD (50 min).',
+    modalidad: 'Trabajamos con terapia cognitivo-conductual. Sesiones presenciales y en línea.',
+    contacto:  'Escribí *agendar* para reservar una cita o contactanos directamente.'
+}
+
+function buildMenu(categories) {
+    const cats = categories.length > 0
+        ? categories
+        : Object.keys(CATEGORY_LABELS)
+
+    let text = '*¿Sobre qué querés información?*\n\n'
+    cats.forEach((cat, i) => {
+        const label = CATEGORY_LABELS[cat] || cat
+        text += `  ${i + 1}. ${label}\n`
+    })
+    text += '\nEscribí el número de tu elección.'
+    return { text, cats }
+}
+
+const knowledgeBaseFlow = addKeyword(['📋 Info', 'info', 'información', 'preguntas', 'faq', 'ayuda'])
+    .addAnswer(
+        'Un momento, consultando la información disponible...',
+        { capture: false },
+        async (ctx, { flowDynamic, state }) => {
+            const categories = await knowledgeService.getCategories('es')
+            const { text, cats } = buildMenu(categories)
+            await state.update({ _kbCats: cats })
+            await flowDynamic(text)
         }
-        
-        try {
-            const documents = await knowledgeService.searchByCategory(category)
-            
-            if (!documents || documents.length === 0) {
-                await flowDynamic('📭 No encontré documentos en esa categoría.')
+    )
+    .addAnswer(
+        'Tu elección:',
+        { capture: true },
+        async (ctx, { flowDynamic, state }) => {
+            const stateData = await state.getAll()
+            const cats = stateData._kbCats || Object.keys(CATEGORY_LABELS)
+            const num = parseInt(ctx.body.trim(), 10)
+
+            if (isNaN(num) || num < 1 || num > cats.length) {
+                await flowDynamic(`❌ Elegí un número entre 1 y ${cats.length}.\n\nEscribí *info* para volver al menú.`)
+                await state.clear()
                 return
             }
-            
-            let response = `📚 *Documentos sobre ${category.toUpperCase()}*\n\n`
-            
-            for (const doc of documents.slice(0, 5)) {
-                response += `📄 *${doc.title}*\n`
-                if (doc.description) {
-                    response += `   ${doc.description}\n`
-                }
-                response += '\n'
-            }
-            
-            response += '\n💡 Escribe otro tema para más información.'
-            
-            await flowDynamic(response)
-            
-        } catch (error) {
-            console.error('KB Error:', error.message)
-            await flowDynamic('⚠️ Error al buscar. Intenta más tarde.')
-        }
-    })
 
-export const searchFlow = addKeyword(['buscar', 'search', 'info'])
-    .addAnswer('🔍 ¿Sobre qué tema buscas información?\n\nEscribe: Depresión, Emociones, Esquizofrenia, Ansiedad', { capture: true })
-    .addAction(async (ctx, { flowDynamic }) => {
-        const input = ctx.body.toLowerCase().trim()
-        const category = kbCategories[input]
-        
-        if (category) {
-            const documents = await knowledgeService.searchByCategory(category)
-            
-            if (documents?.length > 0) {
-                let response = `📚 *Resultados para ${input}*\n\n`
-                for (const doc of documents.slice(0, 3)) {
-                    response += `📄 ${doc.title}\n`
-                }
-                await flowDynamic(response)
-            } else {
-                await flowDynamic('📭 No encontré documentos.')
-            }
-        } else {
-            await flowDynamic('❌ Categoría no encontrada.')
+            const category = cats[num - 1]
+            const label = CATEGORY_LABELS[category] || category
+
+            const faq = await knowledgeService.getByCategory(category, 'es')
+            const answer = faq?.answer || STATIC_FALLBACK[category] || 'Contactanos para más información.'
+
+            await flowDynamic(`📋 *${label}*\n\n${answer}\n\nEscribí *info* para otra consulta o *menu* para volver al inicio.`)
+            await state.clear()
         }
-    })
+    )
+
+export const searchFlow = addKeyword(['buscar', 'search'])
+    .addAnswer(
+        '🔍 ¿Sobre qué tema buscás? (ej: horarios, precios, ubicación)',
+        { capture: true },
+        async (ctx, { flowDynamic }) => {
+            const input = ctx.body.toLowerCase().trim()
+            const matched = Object.keys(CATEGORY_LABELS).find(cat => input.includes(cat))
+
+            if (!matched) {
+                await flowDynamic('No encontré esa categoría. Escribí *info* para ver las opciones disponibles.')
+                return
+            }
+
+            const faq = await knowledgeService.getByCategory(matched, 'es')
+            const answer = faq?.answer || STATIC_FALLBACK[matched]
+            const label = CATEGORY_LABELS[matched]
+
+            await flowDynamic(`📋 *${label}*\n\n${answer}`)
+        }
+    )
 
 export default knowledgeBaseFlow

@@ -2,65 +2,61 @@ import pg from 'pg'
 
 const { Pool } = pg
 
-if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is required')
-}
+export function createKnowledgeService(db) {
+    return {
+        async getByCategory(category, lang = 'es') {
+            try {
+                const result = await db.query(
+                    `SELECT question, answer FROM bot_faq
+                     WHERE category = $1 AND lang = $2 AND is_active = true
+                     ORDER BY created_at ASC
+                     LIMIT 1`,
+                    [category.toLowerCase(), lang]
+                )
+                return result.rows[0] || null
+            } catch {
+                return null
+            }
+        },
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
-})
+        async getCategories(lang = 'es') {
+            try {
+                const result = await db.query(
+                    `SELECT DISTINCT category FROM bot_faq
+                     WHERE lang = $1 AND is_active = true
+                     ORDER BY category`,
+                    [lang]
+                )
+                return result.rows.map(r => r.category)
+            } catch {
+                return []
+            }
+        },
 
-export const knowledgeService = {
-    async searchByCategory(category, psychologistId = null) {
-        let query = 'SELECT * FROM knowledge_base WHERE is_active = true AND category = $1'
-        const params = [category.toLowerCase()]
-        
-        if (psychologistId) {
-            query += ' AND (psychologist_id = $2 OR psychologist_id IS NULL)'
-            params.push(psychologistId)
+        async searchByCategory(category, psychologistId = null) {
+            let query = 'SELECT * FROM knowledge_base WHERE is_active = true AND category = $1'
+            const params = [category.toLowerCase()]
+
+            if (psychologistId) {
+                query += ' AND (psychologist_id = $2 OR psychologist_id IS NULL)'
+                params.push(psychologistId)
+            }
+
+            query += ' ORDER BY created_at DESC'
+            const result = await db.query(query, params)
+            return result.rows
         }
-        
-        query += ' ORDER BY created_at DESC'
-        
-        const result = await pool.query(query, params)
-        return result.rows
-    },
-
-    async searchByKeyword(keyword, psychologistId = null) {
-        let query = `
-            SELECT * FROM knowledge_base 
-            WHERE is_active = true 
-            AND (
-                title ILIKE $1 
-                OR description ILIKE $1 
-                OR $1 = ANY(tags)
-            )`
-        const params = [`%${keyword}%`]
-        
-        if (psychologistId) {
-            query += ' AND (psychologist_id = $2 OR psychologist_id IS NULL)'
-            params.push(psychologistId)
-        }
-        
-        query += ' ORDER BY created_at DESC LIMIT 10'
-        
-        const result = await pool.query(query, params)
-        return result.rows
-    },
-
-    async getAllCategories() {
-        const result = await pool.query(`
-            SELECT category, COUNT(*) as count 
-            FROM knowledge_base 
-            WHERE is_active = true 
-            GROUP BY category 
-            ORDER BY count DESC
-        `)
-        return result.rows
-    },
-
-    async getById(id) {
-        const result = await pool.query('SELECT * FROM knowledge_base WHERE id = $1', [id])
-        return result.rows[0]
     }
 }
+
+let _pool = null
+
+function _getPool() {
+    if (!_pool) {
+        if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL environment variable is required')
+        _pool = new Pool({ connectionString: process.env.DATABASE_URL })
+    }
+    return _pool
+}
+
+export const knowledgeService = new Proxy({}, { get: (_, k) => createKnowledgeService(_getPool())[k] })
