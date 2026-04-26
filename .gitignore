@@ -30,6 +30,8 @@ sessions/
 AsistentePsicologico_sessions/
 tokens/
 *.qr.png
+bot/bot_sessions/
+bot/**/*.creds.json
 
 # Database
 *.sql.bak
