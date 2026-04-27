@@ -1,7 +1,6 @@
-const bot = require('@builderbot/bot')
-const { addAnswer, addKeyword } = bot
+import { addAnswer, addKeyword } from '@builderbot/bot'
 
-const mainMenuFlow = [
+export const mainMenuFlow = [
     addKeyword(['hola', 'hello', 'ola', 'buenas'])
         .addAnswer('¡Hola! 👋 Soy tu Asistente Psicológico.\n\nSoy un asistente administrativo especializado en gestionar citas y ayudarte con el proceso de agendamiento.\n\n*¿En qué puedo ayudarte hoy?*', { buttons: [
             { body: '📅 Nueva Cita' },
@@ -19,5 +18,3 @@ const mainMenuFlow = [
             { body: '❓ Ayuda' }
         ]})
 ]
-
-module.exports = { mainMenuFlow }
