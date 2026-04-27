@@ -2,32 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Instalar dependencias del sistema (Chrome para WPPConnect)
-RUN apk add --no-cache \
-    chromium \
-    ca-certificates \
-    ttf-freefont \
-    font-noto \
-    font-noto-emoji
-
-# Configurar Chrome para modo headless
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    CHROME_BIN=/usr/bin/chromium
-
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . ./
 
-# Crear directorio de tokens
-RUN mkdir -p /app/tokens
+RUN mkdir -p /app/bot_sessions
 
-# Exponer puerto
-EXPOSE 3000
+EXPOSE 3001
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000 || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
 
 CMD ["pnpm", "start"]
