@@ -7,15 +7,14 @@ services:
       dockerfile: ../bot/Dockerfile
     container_name: asistente-bot
     ports:
-      - "3000:3000"
+      - "3001:3001"
     volumes:
-      - ./bot/sessions:/app/sessions
+      - ./bot/bot_sessions:/app/bot_sessions
     environment:
-      - BOT_NAME=AsistentePsicologico
-      - SESSION_PATH=/app/sessions
       - DATABASE_URL=${DATABASE_URL}
-      - DEFAULT_PSYCHOLOGIST_ID=${DEFAULT_PSYCHOLOGIST_ID}
-      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-http://n8n:5678/webhook}
+      - WA_PHONE_NUMBER=${WA_PHONE_NUMBER}
+      - HEALTH_PORT=3001
+      - PORT=3000
     restart: unless-stopped
     networks:
       - asistente-network
