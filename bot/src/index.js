@@ -48,9 +48,16 @@ const main = async () => {
 
     const database = new MemoryDB()
 
+    const waPhone = process.env.WA_PHONE_NUMBER
+    if (waPhone) {
+        console.log(`📱 Pairing mode: ${waPhone}`)
+    }
+
     const provider = createProvider(BaileysProvider, {
         name: 'AsistentePsicologico',
         folderNameToken: AUTH_PATH,
+        usePairingCode: !!waPhone,
+        phoneNumber: waPhone || null,
     })
 
     provider.on('ready', () => { wsConnected = true; console.log('✅ WhatsApp conectado') })
