@@ -2,6 +2,7 @@
   "name": "asistente-psicologico-bot",
   "version": "1.0.0",
   "description": "WhatsApp Bot para Asistente Psicológico",
+  "type": "module",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
