@@ -31,7 +31,7 @@ function buildMenu(categories) {
     return { text, cats }
 }
 
-const knowledgeBaseFlow = addKeyword(['📋 Info', 'info', 'información', 'preguntas', 'faq', 'ayuda'])
+export const knowledgeBaseFlow = addKeyword(['📋 Info', 'info', 'información', 'preguntas', 'faq', 'ayuda'])
     .addAnswer(
         'Un momento, consultando la información disponible...',
         { capture: false },
@@ -88,4 +88,3 @@ export const searchFlow = addKeyword(['buscar', 'search'])
         }
     )
 
-export default knowledgeBaseFlow
