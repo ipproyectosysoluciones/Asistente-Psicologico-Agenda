@@ -29,6 +29,9 @@
       "protobufjs": ">=6.11.4",
       "got": ">=11.8.3",
       "file-type": ">=22.0.1"
+    },
+    "patchedDependencies": {
+      "@builderbot/provider-baileys": "patches/@builderbot__provider-baileys.patch"
     }
   }
 }

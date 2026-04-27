@@ -9,6 +9,11 @@ overrides:
   got: '>=11.8.3'
   file-type: '>=22.0.1'
 
+patchedDependencies:
+  '@builderbot/provider-baileys':
+    hash: dc7b65fbb798048364d3303025cb2bf6fd0f74ccb2b3cc6079f5d6d3bda5ba50
+    path: patches/@builderbot__provider-baileys.patch
+
 importers:
 
   .:
@@ -21,7 +26,7 @@ importers:
         version: 1.4.1
       '@builderbot/provider-baileys':
         specifier: ^1.4.1
-        version: 1.4.1
+        version: 1.4.1(patch_hash=dc7b65fbb798048364d3303025cb2bf6fd0f74ccb2b3cc6079f5d6d3bda5ba50)
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -1675,7 +1680,7 @@ snapshots:
       - pg-native
       - supports-color
 
-  '@builderbot/provider-baileys@1.4.1':
+  '@builderbot/provider-baileys@1.4.1(patch_hash=dc7b65fbb798048364d3303025cb2bf6fd0f74ccb2b3cc6079f5d6d3bda5ba50)':
     dependencies:
       '@adiwajshing/keyed-db': 0.2.4
       '@ffmpeg-installer/ffmpeg': 1.1.0

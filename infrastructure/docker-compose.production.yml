@@ -47,7 +47,7 @@ services:
       - WA_PHONE_NUMBER=${WA_PHONE_NUMBER}
       - HEALTH_PORT=3001
     volumes:
-      - bot_sessions:/app/bot_sessions
+      - bot_sessions:/app/AsistentePsicologico_sessions
     networks:
       - asistente-network
     healthcheck:
