@@ -37,7 +37,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PORT=5432
-      - DB_POSTGRESDB_DATABASE=${DB_NAME:-asistente_psicologico}
+      - DB_POSTGRESDB_DATABASE=n8n_db
       - DB_POSTGRESDB_USER=${DB_USER:-admin}
       - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
@@ -53,6 +53,8 @@ services:
       - DEFAULT_PSYCHOLOGIST_ID=${DEFAULT_PSYCHOLOGIST_ID}
       - N8N_AUTH_USER=${N8N_AUTH_USER:-admin}
       - N8N_AUTH_PASS=${N8N_AUTH_PASS}
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
     volumes:
       - n8n_data:/home/node/.n8n
     ports:

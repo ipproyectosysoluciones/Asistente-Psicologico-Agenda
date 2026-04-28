@@ -12,7 +12,8 @@
       "name": "POST /auth/login",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [250, 300],
+      "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
     },
     {
       "parameters": {
@@ -27,33 +28,28 @@
     },
     {
       "parameters": {
-        "rule": {
-          "conditions": {
-            "conditions": [
-              {
-                "id": "cond-valid",
-                "value1": "={{ $json.authValid }}",
-                "operation": "equals",
-                "value2": true
-              }
-            ],
-            "combinator": "and"
-          },
-          "options": {}
-        },
-        "options": {}
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.authValid }}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        }
       },
       "id": "if-valid",
       "name": "IF - Valid",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [750, 300]
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { token: $json.token, expiresIn: $json.expiresIn } }}",
         "options": {
-          "responseCode": 200,
-          "responseData": "={{ JSON.stringify({ token: $json.token, expiresIn: $json.expiresIn }) }}"
+          "responseCode": 200
         }
       },
       "id": "respond-ok",
@@ -64,9 +60,10 @@
     },
     {
       "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\"error\":\"Invalid credentials\"}",
         "options": {
-          "responseCode": 401,
-          "responseData": "={\"error\":\"Invalid credentials\"}"
+          "responseCode": 401
         }
       },
       "id": "respond-401",
@@ -77,12 +74,12 @@
     }
   ],
   "connections": {
-    "POST /auth/login": { "main": [[{ "node": "Code - Validate Credentials", "type": "main" }]] },
-    "Code - Validate Credentials": { "main": [[{ "node": "IF - Valid", "type": "main" }]] },
+    "POST /auth/login": { "main": [[{ "node": "Code - Validate Credentials", "type": "main", "index": 0 }]] },
+    "Code - Validate Credentials": { "main": [[{ "node": "IF - Valid", "type": "main", "index": 0 }]] },
     "IF - Valid": {
       "main": [
-        [{ "node": "Respond 200", "type": "main" }],
-        [{ "node": "Respond 401", "type": "main" }]
+        [{ "node": "Respond 200", "type": "main", "index": 0 }],
+        [{ "node": "Respond 401", "type": "main", "index": 0 }]
       ]
     }
   },
