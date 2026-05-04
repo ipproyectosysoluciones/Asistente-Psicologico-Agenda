@@ -72,6 +72,8 @@ services:
       args:
         VITE_AUTH_USER: ${VITE_AUTH_USER}
         VITE_AUTH_PASS: ${VITE_AUTH_PASS}
+    environment:
+      - N8N_INTERNAL_URL=http://n8n:5678
     container_name: asistente-psicologico-dashboard
     restart: unless-stopped
     ports:

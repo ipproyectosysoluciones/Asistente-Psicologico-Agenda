@@ -10,63 +10,41 @@ COPY . ./
 
 ARG VITE_AUTH_USER
 ARG VITE_AUTH_PASS
-ENV VITE_AUTH_USER=$VITE_AUTH_USER
-ENV VITE_AUTH_PASS=$VITE_AUTH_PASS
+ARG VITE_CLINIC_NAME
+ARG VITE_CLINIC_TAGLINE
+ARG VITE_CLINIC_ADDRESS
+ARG VITE_CLINIC_PHONE
+ARG VITE_CLINIC_EMAIL
+ARG VITE_WHATSAPP_NUMBER
+ARG VITE_API_URL
+ENV VITE_AUTH_USER=$VITE_AUTH_USER \
+    VITE_AUTH_PASS=$VITE_AUTH_PASS \
+    VITE_CLINIC_NAME=$VITE_CLINIC_NAME \
+    VITE_CLINIC_TAGLINE=$VITE_CLINIC_TAGLINE \
+    VITE_CLINIC_ADDRESS=$VITE_CLINIC_ADDRESS \
+    VITE_CLINIC_PHONE=$VITE_CLINIC_PHONE \
+    VITE_CLINIC_EMAIL=$VITE_CLINIC_EMAIL \
+    VITE_WHATSAPP_NUMBER=$VITE_WHATSAPP_NUMBER \
+    VITE_API_URL=$VITE_API_URL
 
 RUN pnpm run build
 
 # Production stage with nginx
 FROM nginx:alpine
 
-# Copiar build static
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Configuración nginx
 RUN rm /etc/nginx/conf.d/default.conf
 
-# nginx config para SPA
-RUN cat > /etc/nginx/conf.d/app.conf << 'EOF'
-server {
-    listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
+COPY nginx.conf.template /etc/nginx/conf.d/app.conf.template
 
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
-    gzip_min_length 1000;
-
-    location = /health {
-        return 200 "ok\n";
-        add_header Content-Type text/plain;
-        access_log off;
-    }
-
-    location /api/ {
-        proxy_pass http://n8n:5678/webhook/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-    }
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-
-EOF
+# Default for local docker-compose; override in Railway with:
+# N8N_INTERNAL_URL=http://n8n.railway.internal:5678
+ENV N8N_INTERNAL_URL=http://n8n:5678
 
 EXPOSE 80
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", "envsubst '${N8N_INTERNAL_URL}' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && nginx -g 'daemon off;'"]

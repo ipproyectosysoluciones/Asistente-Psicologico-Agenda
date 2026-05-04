@@ -26,10 +26,10 @@ const catchAllFlow = addKeyword(['.*'])
 const helpFlow = addKeyword(['ayuda', 'help', '?', 'socorro'])
     .addAnswer('*Opciones disponibles:*\n\n📅 Agendar / Cita\n📋 Mi Historia Clínica\n📚 Biblioteca\n🏠 Menú\n\n*Escribí una opción.*')
 
-const PORT = process.env.PORT || 3000
+// Railway injects PORT for health/proxy; BuilderBot API runs on a fixed internal port
+const HEALTH_PORT = parseInt(process.env.PORT || process.env.HEALTH_PORT || '3001', 10)
+const BOT_API_PORT = parseInt(process.env.BOT_API_PORT || '3000', 10)
 const HOST = process.env.HOST || '0.0.0.0'
-
-const HEALTH_PORT = parseInt(process.env.HEALTH_PORT || '3001', 10)
 
 createServer((req, res) => {
     if (req.url === '/health') {
@@ -92,7 +92,7 @@ const main = async () => {
     })
 
     const { httpServer } = result
-    httpServer(PORT, HOST)
+    httpServer(BOT_API_PORT, HOST)
 
     console.log(`✅ Bot listo en http://${HOST}:${PORT}`)
     console.log('📱 Esperando mensajes...')

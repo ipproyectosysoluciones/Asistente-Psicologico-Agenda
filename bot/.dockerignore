@@ -1,6 +1,10 @@
 node_modules/
 bot_sessions/
+sessions/
+AsistentePsicologico_sessions/
 *.creds.json
 *.log
 .env
 .env.*
+debug*.js
+*.qr.png
