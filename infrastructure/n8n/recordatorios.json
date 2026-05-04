@@ -1,5 +1,5 @@
 {
-  "name": "Recordatorios - Auto No-Show",
+  "name": "Recordatorios y No-Show",
   "nodes": [
     {
       "parameters": {
@@ -55,6 +55,80 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.2,
       "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "schedule-reminders",
+      "name": "Schedule - Recordatorios",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  a.id,\n  a.scheduled_at,\n  a.appointment_type,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.scheduled_at BETWEEN NOW() + INTERVAL '23 hours' AND NOW() + INTERVAL '25 hours'\n  AND a.status IN ('scheduled', 'confirmed')\n  AND a.deleted_at IS NULL\n  AND p.phone IS NOT NULL\n  AND p.phone != ''",
+        "options": {}
+      },
+      "id": "pg-fetch-reminders",
+      "name": "PG - Citas en 24h",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [500, 600]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "r1", "value1": "={{ $json.id }}", "operation": "isNotEmpty" }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-has-reminders",
+      "name": "IF - Hay Recordatorios",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst d = new Date(item.scheduled_at);\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear();\nconst timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());\nconst qrData = 'CITA PSICOLOGICA\\nPaciente: ' + item.first_name + ' ' + item.last_name + '\\nFecha: ' + dateStr + '\\nHora: ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '');\nconst qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrData);\nconst message = 'Recordatorio de cita\\n\\nHola ' + item.first_name + ', te recordamos que tenes una cita manana:\\n\\nFecha: ' + dateStr + ' a las ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '') + '\\n\\nEscaneá el QR para ver los detalles de tu cita:\\n' + qrUrl;\nreturn { json: { ...item, qrUrl, message } };",
+        "options": {}
+      },
+      "id": "code-build-qr-reminder",
+      "name": "Code - Build QR Recordatorio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BOT_INTERNAL_URL }}/v1/messages",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.phone }}" },
+            { "name": "message", "value": "={{ $json.message }}" },
+            { "name": "media", "value": "={{ $json.qrUrl }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-wa-reminder",
+      "name": "WhatsApp - Enviar Recordatorio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 450],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -65,7 +139,16 @@
         [{ "node": "Gmail - Notificar No-Show", "type": "main" }],
         []
       ]
-    }
+    },
+    "Schedule - Recordatorios": { "main": [[{ "node": "PG - Citas en 24h", "type": "main" }]] },
+    "PG - Citas en 24h": { "main": [[{ "node": "IF - Hay Recordatorios", "type": "main" }]] },
+    "IF - Hay Recordatorios": {
+      "main": [
+        [{ "node": "Code - Build QR Recordatorio", "type": "main" }],
+        []
+      ]
+    },
+    "Code - Build QR Recordatorio": { "main": [[{ "node": "WhatsApp - Enviar Recordatorio", "type": "main" }]] }
   },
   "active": true,
   "settings": {},

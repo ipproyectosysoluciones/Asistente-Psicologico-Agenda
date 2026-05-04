@@ -55,6 +55,7 @@ services:
       - N8N_AUTH_PASS=${N8N_AUTH_PASS}
       - NODE_FUNCTION_ALLOW_BUILTIN=crypto
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - BOT_INTERNAL_URL=${BOT_INTERNAL_URL:-http://host.docker.internal:3000}
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
@@ -77,6 +78,11 @@ services:
       - "8080:80"
     depends_on:
       - n8n
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - asistente-network
 

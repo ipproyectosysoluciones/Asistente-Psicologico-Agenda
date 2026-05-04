@@ -72,7 +72,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1::uuid AND deleted_at IS NULL",
+        "query": "UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1::uuid AND deleted_at IS NULL RETURNING id",
         "options": { "queryReplacement": "={{ $json.appointmentId }}" }
       },
       "id": "pg-confirm",
@@ -95,6 +95,71 @@
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  a.scheduled_at,\n  a.appointment_type,\n  a.duration_minutes,\n  p.first_name,\n  p.last_name,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.id = $1::uuid",
+        "options": { "queryReplacement": "={{ $json.id }}" }
+      },
+      "id": "pg-fetch-confirm",
+      "name": "PG - Fetch Detalles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 50]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nif (!item.phone) return { json: { ...item, skip: true } };\nconst d = new Date(item.scheduled_at);\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear();\nconst timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());\nconst qrData = 'CITA PSICOLOGICA\\nPaciente: ' + item.first_name + ' ' + item.last_name + '\\nFecha: ' + dateStr + '\\nHora: ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '');\nconst qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrData);\nconst message = 'Cita confirmada!\\n\\nHola ' + item.first_name + ', confirmamos tu cita:\\n\\nFecha: ' + dateStr + ' a las ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '') + '\\n\\nEscaneá el QR para guardar los detalles de tu cita:\\n' + qrUrl;\nreturn { json: { ...item, qrUrl, message, skip: false } };",
+        "options": {}
+      },
+      "id": "code-build-qr-confirm",
+      "name": "Code - Build QR Confirmar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, 50]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [
+              { "id": "q1", "value1": "={{ $json.skip }}", "operation": "equals", "value2": false },
+              { "id": "q2", "value1": "={{ $json.phone }}", "operation": "isNotEmpty" }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-phone-confirm",
+      "name": "IF - Tiene Teléfono",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2000, 50]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BOT_INTERNAL_URL }}/v1/messages",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.phone }}" },
+            { "name": "message", "value": "={{ $json.message }}" },
+            { "name": "media", "value": "={{ $json.qrUrl }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-wa-confirm",
+      "name": "WhatsApp - Confirmación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2250, -100],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "options": {
           "responseCode": 200,
           "responseData": "<html><head><meta charset='utf-8'><style>body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;background:#f0fdf4}.box{text-align:center;padding:40px;border-radius:12px;background:white;box-shadow:0 2px 12px rgba(0,0,0,.08)}</style></head><body><div class='box'><h1>✅</h1><h2>¡Asistencia confirmada!</h2><p>Tu cita ha sido confirmada correctamente.</p><p>Nos vemos pronto.</p></div></body></html>",
@@ -105,7 +170,7 @@
       "name": "Respuesta - Confirmado",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1500, 50]
+      "position": [2500, 50]
     },
     {
       "parameters": {
@@ -137,7 +202,16 @@
         [{ "node": "PG - Cancelar", "type": "main" }]
       ]
     },
-    "PG - Confirmar": { "main": [[{ "node": "Respuesta - Confirmado", "type": "main" }]] },
+    "PG - Confirmar": { "main": [[{ "node": "PG - Fetch Detalles", "type": "main" }]] },
+    "PG - Fetch Detalles": { "main": [[{ "node": "Code - Build QR Confirmar", "type": "main" }]] },
+    "Code - Build QR Confirmar": { "main": [[{ "node": "IF - Tiene Teléfono", "type": "main" }]] },
+    "IF - Tiene Teléfono": {
+      "main": [
+        [{ "node": "WhatsApp - Confirmación", "type": "main" }],
+        [{ "node": "Respuesta - Confirmado", "type": "main" }]
+      ]
+    },
+    "WhatsApp - Confirmación": { "main": [[{ "node": "Respuesta - Confirmado", "type": "main" }]] },
     "PG - Cancelar": { "main": [[{ "node": "Respuesta - Cancelado", "type": "main" }]] }
   },
   "active": true,

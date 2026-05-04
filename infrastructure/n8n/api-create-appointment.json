@@ -26,7 +26,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "WITH inserted AS (\n  INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\n  VALUES ($1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5, 'scheduled', NOW(), NOW())\n  RETURNING id, patient_id, scheduled_at, duration_minutes, appointment_type\n)\nSELECT\n  i.id,\n  i.scheduled_at,\n  i.duration_minutes,\n  i.appointment_type,\n  p.first_name,\n  p.last_name,\n  p.email\nFROM inserted i\nJOIN patients p ON p.id = i.patient_id",
+        "query": "WITH inserted AS (\n  INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\n  VALUES ($1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5, 'scheduled', NOW(), NOW())\n  RETURNING id, patient_id, psychologist_id, scheduled_at, duration_minutes, appointment_type\n)\nSELECT\n  i.id,\n  i.scheduled_at,\n  i.duration_minutes,\n  i.appointment_type,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM inserted i\nJOIN patients p ON p.id = i.patient_id\nJOIN psychologists ps ON ps.id = i.psychologist_id",
         "options": { "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}" }
       },
       "id": "pg-insert", "name": "PG - INSERT Cita", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
@@ -72,9 +72,47 @@
     },
     {
       "parameters": {
+        "jsCode": "const appt = $('PG - INSERT Cita').item.json;\nconst d = new Date(appt.scheduled_at);\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear();\nconst timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());\nconst webhookUrl = $env.WEBHOOK_URL || '';\nconst confirmLink = webhookUrl + '/webhook/confirm/' + appt.id + '?action=confirmar';\nconst cancelLink = webhookUrl + '/webhook/confirm/' + appt.id + '?action=cancelar';\nconst qrData = 'CITA PSICOLOGICA\\nPaciente: ' + appt.first_name + ' ' + appt.last_name + '\\nFecha: ' + dateStr + '\\nHora: ' + timeStr + ' hs\\nTipo: ' + appt.appointment_type + '\\nDuracion: ' + appt.duration_minutes + ' min\\nPsicologo: ' + (appt.psychologist_name || '');\nconst qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrData);\nconst message = 'Nueva cita agendada!\\n\\nHola ' + appt.first_name + ', tu cita ha sido registrada:\\n\\nFecha: ' + dateStr + ' a las ' + timeStr + ' hs\\nTipo: ' + appt.appointment_type + '\\nDuracion: ' + appt.duration_minutes + ' min\\nPsicologo: ' + (appt.psychologist_name || '') + '\\n\\nConfirmar asistencia: ' + confirmLink + '\\nCancelar: ' + cancelLink + '\\n\\nEscaneá el QR para ver los detalles de tu cita:\\n' + qrUrl;\nreturn { json: { phone: appt.phone, message, qrUrl } };",
+        "options": {}
+      },
+      "id": "code-build-qr", "name": "Code - Build QR Cita", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [2000, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "conditions": {
+            "conditions": [{ "id": "p1", "value1": "={{ $json.phone }}", "operation": "isNotEmpty" }],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "options": {}
+      },
+      "id": "if-has-phone", "name": "IF - Tiene Teléfono", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [2250, 150]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.BOT_INTERNAL_URL }}/v1/messages",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "number", "value": "={{ $json.phone }}" },
+            { "name": "message", "value": "={{ $json.message }}" },
+            { "name": "media", "value": "={{ $json.qrUrl }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-wa-new-appt", "name": "WhatsApp - Nueva Cita", "type": "n8n-nodes-base.httpRequest", "typeVersion": 4.2, "position": [2500, 50],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "options": { "responseCode": 201, "responseData": "={{ JSON.stringify({ success: true, appointment_id: $('PG - INSERT Cita').item.json.id, calendar_event_id: $('Google Calendar - Crear Evento').item.json.id }) }}" }
       },
-      "id": "respond-201", "name": "Respond 201", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [2000, 150]
+      "id": "respond-201", "name": "Respond 201", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [2750, 150]
     }
   ],
   "connections": {
@@ -89,7 +127,15 @@
     "PG - INSERT Cita": { "main": [[{ "node": "Code - Preparar Calendario", "type": "main" }]] },
     "Code - Preparar Calendario": { "main": [[{ "node": "Google Calendar - Crear Evento", "type": "main" }]] },
     "Google Calendar - Crear Evento": { "main": [[{ "node": "PG - Guardar Event ID", "type": "main" }]] },
-    "PG - Guardar Event ID": { "main": [[{ "node": "Respond 201", "type": "main" }]] }
+    "PG - Guardar Event ID": { "main": [[{ "node": "Code - Build QR Cita", "type": "main" }]] },
+    "Code - Build QR Cita": { "main": [[{ "node": "IF - Tiene Teléfono", "type": "main" }]] },
+    "IF - Tiene Teléfono": {
+      "main": [
+        [{ "node": "WhatsApp - Nueva Cita", "type": "main" }],
+        [{ "node": "Respond 201", "type": "main" }]
+      ]
+    },
+    "WhatsApp - Nueva Cita": { "main": [[{ "node": "Respond 201", "type": "main" }]] }
   },
   "active": true,
   "settings": {},
