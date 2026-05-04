@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /appointments
+Disallow: /patients
+Disallow: /leads
+Disallow: /login
+
+Sitemap: https://consultorio.example.com/sitemap.xml
