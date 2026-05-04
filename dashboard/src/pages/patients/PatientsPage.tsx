@@ -1,6 +1,10 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import { toast } from 'sonner'
+import { Search, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,14 +17,22 @@ import {
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import api from '@/lib/api'
 
 const PAGE_SIZE = 20
 
-async function fetchPatients(page: number) {
-  return api.get(`/patients?page=${page}&limit=${PAGE_SIZE}`)
+const CONSENT_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  pending: { label: 'Pendiente', variant: 'secondary' },
+  signed: { label: 'Firmado', variant: 'default' },
+  accepted: { label: 'Aceptado', variant: 'default' },
+  revoked: { label: 'Revocado', variant: 'destructive' },
+  declined: { label: 'Rechazado', variant: 'destructive' },
+}
+
+async function fetchPatients(page: number, search: string) {
+  const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) })
+  if (search) params.set('search', search)
+  return api.get(`/patients?${params.toString()}`)
 }
 
 async function createPatient(data: PatientForm) {
@@ -34,21 +46,33 @@ interface PatientForm {
   phone?: string
 }
 
-const CONSENT_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  pending: { label: 'Pendiente', variant: 'secondary' },
-  signed: { label: 'Firmado', variant: 'default' },
-  revoked: { label: 'Revocado', variant: 'destructive' }
-}
-
 export default function PatientsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = parseInt(searchParams.get('page') ?? '1', 10)
+  const searchQuery = searchParams.get('search') ?? ''
+
   const [open, setOpen] = useState(false)
-  const [page, setPage] = useState(1)
+  const [searchInput, setSearchInput] = useState(searchQuery)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+
+  // Debounce search into URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev)
+        if (searchInput) { next.set('search', searchInput); next.set('page', '1') }
+        else { next.delete('search'); next.set('page', '1') }
+        return next
+      })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [searchInput, setSearchParams])
+
   const { data, isLoading } = useQuery({
-    queryKey: ['patients', page],
-    queryFn: () => fetchPatients(page),
-    retry: false
+    queryKey: ['patients', page, searchQuery],
+    queryFn: () => fetchPatients(page, searchQuery),
+    retry: false,
   })
 
   const createMutation = useMutation({
@@ -56,12 +80,22 @@ export default function PatientsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['patients'] })
       setOpen(false)
-    }
+      toast.success('Paciente registrado exitosamente')
+    },
+    onError: () => toast.error('No se pudo registrar el paciente'),
   })
 
-  const patients = data?.patients ?? []
+  const patients: Record<string, unknown>[] = data?.patients ?? []
   const totalPages = (data as any)?.total_pages ?? 1
   const totalCount = (data as any)?.total_count ?? 0
+
+  function setPage(p: number) {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.set('page', String(p))
+      return next
+    })
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -70,7 +104,7 @@ export default function PatientsPage() {
       first_name: formData.get('first_name') as string,
       last_name: formData.get('last_name') as string,
       email: formData.get('email') as string,
-      phone: formData.get('phone') as string
+      phone: formData.get('phone') as string,
     })
   }
 
@@ -80,15 +114,13 @@ export default function PatientsPage() {
         <div className="text-lg font-semibold">Pacientes</div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm">+ Nuevo Paciente</Button>
+            <Button size="sm"><Users className="h-4 w-4 mr-1.5" />Nuevo Paciente</Button>
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>Nuevo Paciente</DialogTitle>
-                <DialogDescription>
-                  Complete los datos del paciente. El consentimiento se solicitará después.
-                </DialogDescription>
+                <DialogDescription>El consentimiento se solicitará después.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
@@ -105,13 +137,11 @@ export default function PatientsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Teléfono</Label>
-                  <Input id="phone" name="phone" type="tel" placeholder="+52 555 123 4567" />
+                  <Input id="phone" name="phone" type="tel" placeholder="+57 300 123 4567" />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  Cancelar
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? 'Guardando...' : 'Guardar'}
                 </Button>
@@ -122,11 +152,26 @@ export default function PatientsPage() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            Todos los Pacientes {totalCount > 0 && <span className="text-muted-foreground font-normal text-sm">({totalCount})</span>}
-          </CardTitle>
+        <CardHeader className="space-y-3 pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">
+              Todos los Pacientes
+              {totalCount > 0 && (
+                <span className="ml-2 text-muted-foreground font-normal text-sm">({totalCount})</span>
+              )}
+            </CardTitle>
+          </div>
+          <div className="relative max-w-xs">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre o email..."
+              className="pl-8"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+            />
+          </div>
         </CardHeader>
+
         <CardContent className="p-0">
           <Table>
             <TableHeader>
@@ -150,17 +195,24 @@ export default function PatientsPage() {
                 ))
               ) : patients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No hay pacientes registrados.
+                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <div className="flex flex-col items-center gap-2">
+                      <Users className="h-8 w-8 opacity-30" />
+                      <span>
+                        {searchQuery
+                          ? `No se encontraron pacientes para "${searchQuery}".`
+                          : 'No hay pacientes registrados.'}
+                      </span>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                patients.map((patient: Record<string, unknown>) => {
+                patients.map((patient) => {
                   const consent = CONSENT_LABELS[patient.consent_status as string] ?? CONSENT_LABELS.pending
                   return (
                     <TableRow key={patient.id as string}>
                       <TableCell>
-                        <div className="font-medium">{patient.first_name} {patient.last_name}</div>
+                        <div className="font-medium">{patient.first_name as string} {patient.last_name as string}</div>
                         {patient.phone && (
                           <div className="text-xs text-muted-foreground">{patient.phone as string}</div>
                         )}
@@ -190,16 +242,13 @@ export default function PatientsPage() {
               )}
             </TableBody>
           </Table>
+
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t text-sm text-muted-foreground">
               <span>Página {page} de {totalPages}</span>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setPage(p => p - 1)} disabled={page === 1}>
-                  Anterior
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setPage(p => p + 1)} disabled={page >= totalPages}>
-                  Siguiente
-                </Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(page - 1)} disabled={page === 1}>Anterior</Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(page + 1)} disabled={page >= totalPages}>Siguiente</Button>
               </div>
             </div>
           )}

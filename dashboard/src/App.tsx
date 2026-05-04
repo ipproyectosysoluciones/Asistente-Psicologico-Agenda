@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthGuard } from '@/components/auth/AuthGuard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -15,6 +16,7 @@ import LoginPage from '@/pages/auth/LoginPage'
 export default function App() {
   return (
     <AuthProvider>
+      <Toaster richColors position="top-right" />
       <Routes>
         <Route path="/landing" element={<ErrorBoundary serviceName="Landing"><LandingPage /></ErrorBoundary>} />
         <Route path="/capture" element={<ErrorBoundary serviceName="Capture"><CapturePage /></ErrorBoundary>} />
