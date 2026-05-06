@@ -7,7 +7,7 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . ./
 
-RUN mkdir -p /app/bot_sessions
+RUN mkdir -p /app/bot_sessions && chmod +x /app/scripts/start.sh
 
 # 3000: BuilderBot HTTP API (/v1/messages) — internal only
 # 3001: Health check — Railway maps PORT to this
@@ -20,4 +20,4 @@ ENV PORT=3001 \
 HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT}/health || exit 1
 
-CMD ["pnpm", "start"]
+CMD ["/bin/sh", "/app/scripts/start.sh"]

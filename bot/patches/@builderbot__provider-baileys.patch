@@ -1,8 +1,8 @@
 diff --git a/dist/index.mjs b/dist/index.mjs
-index dac44a2fa580945b0849f5586a11a45c9fbc2310..97ae25d2ddab5039760fe544c8765a4494907009 100644
+index dac44a2fa580945b0849f5586a11a45c9fbc2310..26ac0610bfbac73c9ba73629afeae355c9aa7291 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -33819,30 +33819,6 @@ class BaileysProvider extends ProviderClass {
+@@ -33819,35 +33819,34 @@ class BaileysProvider extends ProviderClass {
                      ...this.globalVendorArgs,
                  });
                  this.vendor = sock;
@@ -30,10 +30,38 @@ index dac44a2fa580945b0849f5586a11a45c9fbc2310..97ae25d2ddab5039760fe544c8765a44
 -                        ]);
 -                    }
 -                }
++                let pairingCodeRequested = false;
                  sock.ev.on('connection.update', async (update) => {
                      const { connection, lastDisconnect, qr } = update;
                      this.logger.log(`[${new Date().toISOString()}] Connection update: ${connection}`);
-@@ -33877,8 +33853,30 @@ class BaileysProvider extends ProviderClass {
+                     const statusCode = lastDisconnect?.error?.output?.statusCode;
+                     const reason = lastDisconnect?.error?.message;
++                    /** Request pairing code when noise handshake is done (connecting state) */
++                    if (connection === 'connecting' && !pairingCodeRequested &&
++                        this.globalVendorArgs.usePairingCode && !sock.authState.creds.registered &&
++                        this.globalVendorArgs.phoneNumber) {
++                        pairingCodeRequested = true;
++                        try {
++                            const phoneClean = this.globalVendorArgs.phoneNumber.replace(/[^0-9]/g, '');
++                            const code = await sock.requestPairingCode(phoneClean);
++                            await utils$4.delay(2000);
++                            this.emit('require_action', {
++                                title: '⚡⚡ ACTION REQUIRED ⚡⚡',
++                                instructions: [
++                                    `Accept the WhatsApp notification from ${this.globalVendorArgs.phoneNumber} on your phone 👌`,
++                                    `The pairing code is: ${code}`,
++                                    `Need help: https://link.codigoencasa.com/DISCORD`,
++                                ],
++                                payload: { code },
++                            });
++                        } catch(e) {
++                            this.logger.log(`[${new Date().toISOString()}] Pairing code request failed: ${e.message}`);
++                        }
++                    }
+                     /** Connection closed for various reasons */
+                     if (connection === 'close') {
+                         this.logger.log(`[${new Date().toISOString()}] Connection closed. Status: ${statusCode}, Reason: ${reason}`);
+@@ -33877,8 +33876,8 @@ class BaileysProvider extends ProviderClass {
                      /** Connection opened successfully */
                      if (connection === 'open') {
                          this.logger.log(`[${new Date().toISOString()}] Connection opened successfully`);
@@ -41,28 +69,6 @@ index dac44a2fa580945b0849f5586a11a45c9fbc2310..97ae25d2ddab5039760fe544c8765a44
 -                        this.reconnectDelay = 1000; // Reset delay
 +                        this.reconnectAttempts = 0;
 +                        this.reconnectDelay = 1000;
-+                        // Request pairing code now that WebSocket is open
-+                        if (this.globalVendorArgs.usePairingCode && !sock.authState.creds.registered) {
-+                            if (this.globalVendorArgs.phoneNumber) {
-+                                try {
-+                                    const code = await sock.requestPairingCode(this.globalVendorArgs.phoneNumber);
-+                                    await utils$4.delay(2000);
-+                                    this.emit('require_action', {
-+                                        title: '⚡⚡ ACTION REQUIRED ⚡⚡',
-+                                        instructions: [
-+                                            `Accept the WhatsApp notification from ${this.globalVendorArgs.phoneNumber} on your phone 👌`,
-+                                            `The pairing code is: ${code}`,
-+                                            `Need help: https://link.codigoencasa.com/DISCORD`,
-+                                        ],
-+                                        payload: { code },
-+                                    });
-+                                } catch(e) {
-+                                    this.logger.log(`[${new Date().toISOString()}] Pairing code request failed: ${e.message}`);
-+                                    this.emit('auth_failure', [`Pairing code request failed: ${e.message}`]);
-+                                }
-+                                return;
-+                            }
-+                        }
                          const parseNumber = `${sock?.user?.id}`.split(':').shift();
                          const host = { ...sock?.user, phone: parseNumber };
                          this.globalVendorArgs.host = host;

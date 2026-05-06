@@ -4,6 +4,23 @@ import { createServer } from 'http'
 import { createBot, createProvider, createFlow, addKeyword, MemoryDB } from '@builderbot/bot'
 import { BaileysProvider } from '@builderbot/provider-baileys'
 
+async function fetchWaVersion() {
+    try {
+        const r = await fetch('https://web.whatsapp.com/sw.js', {
+            headers: {
+                'sec-fetch-site': 'none',
+                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+            }
+        })
+        const text = await r.text()
+        const match = text.match(/"client_revision":\s*(\d+)/)
+        if (match?.[1]) return [2, 3000, parseInt(match[1])]
+    } catch (e) {
+        console.warn('⚠️ No se pudo obtener versión WA, usando fallback:', e.message)
+    }
+    return [2, 3000, 1038797494]
+}
+
 const AUTH_PATH = process.env.BOT_SESSION_PATH || '/app/bot_sessions'
 mkdirSync(AUTH_PATH, { recursive: true })
 
@@ -43,7 +60,7 @@ createServer((req, res) => {
 
 const main = async () => {
     console.log('🔄 Iniciando bot con Baileys...')
-    console.log('📍 Puerto:', PORT, '| Host:', HOST)
+    console.log('📍 Health:', HEALTH_PORT, '| API:', BOT_API_PORT, '| Host:', HOST)
     console.log(`📂 Session path: ${AUTH_PATH}`)
 
     const database = new MemoryDB()
@@ -53,11 +70,15 @@ const main = async () => {
         console.log(`📱 Pairing mode: ${waPhone}`)
     }
 
+    const waVersion = await fetchWaVersion()
+    console.log(`📡 WA version: ${waVersion.join('.')}`)
+
     const provider = createProvider(BaileysProvider, {
         name: 'AsistentePsicologico',
         folderNameToken: AUTH_PATH,
         usePairingCode: !!waPhone,
         phoneNumber: waPhone || null,
+        version: waVersion,
     })
 
     provider.on('ready', () => { wsConnected = true; console.log('✅ WhatsApp conectado') })
@@ -94,7 +115,7 @@ const main = async () => {
     const { httpServer } = result
     httpServer(BOT_API_PORT, HOST)
 
-    console.log(`✅ Bot listo en http://${HOST}:${PORT}`)
+    console.log(`✅ Bot listo — API: http://${HOST}:${BOT_API_PORT} | Health: http://${HOST}:${HEALTH_PORT}`)
     console.log('📱 Esperando mensajes...')
 }
 
