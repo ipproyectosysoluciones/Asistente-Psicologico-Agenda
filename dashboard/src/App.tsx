@@ -18,25 +18,19 @@ export default function App() {
     <AuthProvider>
       <Toaster richColors position="top-right" />
       <Routes>
-        <Route path="/landing" element={<ErrorBoundary serviceName="Landing"><LandingPage /></ErrorBoundary>} />
+        {/* Public routes */}
+        <Route path="/" element={<ErrorBoundary serviceName="Landing"><LandingPage /></ErrorBoundary>} />
+        <Route path="/landing" element={<Navigate to="/" replace />} />
         <Route path="/capture" element={<ErrorBoundary serviceName="Capture"><CapturePage /></ErrorBoundary>} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/landing-pages" element={<Navigate to="/landing" replace />} />
 
-        <Route
-          path="/"
-          element={
-            <AuthGuard>
-              <DashboardLayout />
-            </AuthGuard>
-          }
-        >
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<ErrorBoundary serviceName="Dashboard"><DashboardPage /></ErrorBoundary>} />
-          <Route path="appointments" element={<ErrorBoundary serviceName="Citas"><AppointmentsPage /></ErrorBoundary>} />
-          <Route path="patients" element={<ErrorBoundary serviceName="Pacientes"><PatientsPage /></ErrorBoundary>} />
-          <Route path="patients/:id" element={<ErrorBoundary serviceName="HC Paciente"><PatientDetailPage /></ErrorBoundary>} />
-          <Route path="leads" element={<ErrorBoundary serviceName="Leads"><LeadsPage /></ErrorBoundary>} />
+        {/* Protected routes — pathless layout route */}
+        <Route element={<AuthGuard><DashboardLayout /></AuthGuard>}>
+          <Route path="/dashboard" element={<ErrorBoundary serviceName="Dashboard"><DashboardPage /></ErrorBoundary>} />
+          <Route path="/appointments" element={<ErrorBoundary serviceName="Citas"><AppointmentsPage /></ErrorBoundary>} />
+          <Route path="/patients" element={<ErrorBoundary serviceName="Pacientes"><PatientsPage /></ErrorBoundary>} />
+          <Route path="/patients/:id" element={<ErrorBoundary serviceName="HC Paciente"><PatientDetailPage /></ErrorBoundary>} />
+          <Route path="/leads" element={<ErrorBoundary serviceName="Leads"><LeadsPage /></ErrorBoundary>} />
         </Route>
       </Routes>
     </AuthProvider>

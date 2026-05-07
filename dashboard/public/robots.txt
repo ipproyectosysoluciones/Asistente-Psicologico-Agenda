@@ -6,4 +6,4 @@ Disallow: /patients
 Disallow: /leads
 Disallow: /login
 
-Sitemap: https://consultorio.example.com/sitemap.xml
+Sitemap: https://asistente-psicologico-agenda.up.railway.app/sitemap.xml

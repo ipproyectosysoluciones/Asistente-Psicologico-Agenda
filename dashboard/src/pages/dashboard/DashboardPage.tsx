@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
+import { getStatusConfig } from '@/lib/status'
 
 async function fetchStats() {
   return api.get('/stats')
@@ -17,36 +18,30 @@ async function fetchUpcoming() {
   return api.get('/appointments?status=scheduled&status=confirmed&limit=5&page=1')
 }
 
-function StatCard({ title, value, description, icon: Icon, accent = 'text-primary' }: {
+function StatCard({ title, value, description, icon: Icon, iconBg = 'bg-primary/10', iconColor = 'text-primary' }: {
   title: string
   value: number | string
   description?: string
   icon: React.ElementType
-  accent?: string
+  iconBg?: string
+  iconColor?: string
 }) {
   return (
-    <Card>
+    <Card className="hover:shadow-sm transition-shadow">
       <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
-        <div>
+        <div className="space-y-1">
           <CardDescription className="text-xs font-medium uppercase tracking-wide">{title}</CardDescription>
-          <div className="pt-1 text-3xl font-bold">{value}</div>
-          {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
+          <div className="text-3xl font-bold">{value}</div>
+          {description && <p className="text-xs text-muted-foreground">{description}</p>}
         </div>
-        <div className={`rounded-lg p-2 ${accent}`}>
-          <Icon className="h-5 w-5" />
+        <div className={`rounded-xl p-2.5 ${iconBg}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
         </div>
       </CardHeader>
     </Card>
   )
 }
 
-const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  scheduled: { label: 'Programada', variant: 'secondary' },
-  confirmed: { label: 'Confirmada', variant: 'default' },
-  completed: { label: 'Completada', variant: 'outline' },
-  no_show: { label: 'Inasistencia', variant: 'destructive' },
-  cancelled: { label: 'Cancelada', variant: 'destructive' },
-}
 
 function getInitials(first: string, last: string) {
   return `${first?.[0] ?? ''}${last?.[0] ?? ''}`.toUpperCase()
@@ -91,27 +86,32 @@ export default function DashboardPage() {
               value={s.today_appointments}
               description="Programadas para hoy"
               icon={CalendarDays}
+              iconBg="bg-primary/10"
+              iconColor="text-primary"
             />
             <StatCard
               title="Completadas (Mes)"
               value={s.month_completed}
               description="Este mes"
               icon={CheckCircle}
-              accent="text-green-600"
+              iconBg="bg-green-100 dark:bg-green-900/30"
+              iconColor="text-green-600 dark:text-green-400"
             />
             <StatCard
               title="Total Pacientes"
               value={s.total_patients}
               description={`+${s.new_patients_month} este mes`}
               icon={Users}
-              accent="text-amber-600"
+              iconBg="bg-amber-100 dark:bg-amber-900/30"
+              iconColor="text-amber-600 dark:text-amber-400"
             />
             <StatCard
               title="Inasistencias"
               value={s.month_noshow}
               description={`${s.month_cancelled} canceladas`}
               icon={XCircle}
-              accent="text-red-500"
+              iconBg="bg-red-100 dark:bg-red-900/30"
+              iconColor="text-red-500 dark:text-red-400"
             />
           </>
         )}
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             <div className="divide-y">
               {upcoming.map((appt, i) => {
                 const date = appt.scheduled_at ? new Date(appt.scheduled_at as string) : new Date()
-                const status = STATUS_LABELS[appt.status as string] ?? STATUS_LABELS.scheduled
+                const status = getStatusConfig(appt.status as string)
                 const first = String(appt.first_name ?? '')
                 const last = String(appt.last_name ?? '')
                 return (
@@ -161,7 +161,7 @@ export default function DashboardPage() {
                           {format(date, "EEEE d MMM · HH:mm 'hrs'", { locale: es })}
                         </p>
                       </div>
-                      <Badge variant={status.variant} className="shrink-0">{status.label}</Badge>
+                      <Badge variant="outline" className={`shrink-0 ${status.className}`}>{status.label}</Badge>
                     </div>
                   </div>
                 )

@@ -19,16 +19,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
+import { getStatusConfig } from '@/lib/status'
 
 type Appointment = Record<string, unknown>
-
-const STATUS_LABELS: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  scheduled: { label: 'Programada', variant: 'secondary' },
-  confirmed: { label: 'Confirmada', variant: 'default' },
-  completed: { label: 'Completada', variant: 'outline' },
-  no_show: { label: 'Inasistencia', variant: 'destructive' },
-  cancelled: { label: 'Cancelada', variant: 'destructive' },
-}
 
 const STATUS_TABS = [
   { value: '', label: 'Todas' },
@@ -88,8 +81,8 @@ function AppointmentDetailDialog({ appt, onClose }: { appt: Appointment; onClose
             <span className="text-muted-foreground">Duración</span>
             <span>{String(appt.duration_minutes ?? '')} min</span>
             <span className="text-muted-foreground">Estado</span>
-            <Badge variant={STATUS_LABELS[appt.status as string]?.variant ?? 'secondary'}>
-              {STATUS_LABELS[appt.status as string]?.label ?? String(appt.status)}
+            <Badge variant="outline" className={getStatusConfig(appt.status as string).className}>
+              {getStatusConfig(appt.status as string).label}
             </Badge>
           </div>
           {(appt.email as string | null) && (
@@ -319,13 +312,13 @@ export default function AppointmentsPage() {
                   <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                     <div className="flex flex-col items-center gap-2">
                       <CalendarDays className="h-8 w-8 opacity-30" />
-                      <span>No hay citas{statusFilter ? ` con estado "${STATUS_LABELS[statusFilter]?.label}"` : ''}{searchQuery ? ` para "${searchQuery}"` : ''}.</span>
+                      <span>No hay citas{statusFilter ? ` con estado "${getStatusConfig(statusFilter).label}"` : ''}{searchQuery ? ` para "${searchQuery}"` : ''}.</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 appts.map((appt) => {
-                  const status = STATUS_LABELS[appt.status as string] ?? STATUS_LABELS.scheduled
+                  const status = getStatusConfig(appt.status as string)
                   const date = appt.scheduled_at ? new Date(appt.scheduled_at as string) : new Date()
                   return (
                     <TableRow key={appt.id as string}>
@@ -339,7 +332,7 @@ export default function AppointmentsPage() {
                       </TableCell>
                       <TableCell className="capitalize">{appt.appointment_type as string}</TableCell>
                       <TableCell>{String(appt.duration_minutes ?? '')} min</TableCell>
-                      <TableCell><Badge variant={status.variant}>{status.label}</Badge></TableCell>
+                      <TableCell><Badge variant="outline" className={status.className}>{status.label}</Badge></TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedAppt(appt)}>Ver</Button>
                       </TableCell>
