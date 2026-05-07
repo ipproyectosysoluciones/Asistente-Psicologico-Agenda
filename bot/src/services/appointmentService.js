@@ -185,11 +185,12 @@ export function createAppointmentService(db) {
                         ) AS slot
                     ),
                     booked AS (
-                        SELECT date_trunc('minute', start_time) AS slot
+                        SELECT date_trunc('minute', scheduled_at) AS slot
                         FROM appointments
-                        WHERE start_time::date = $1::date
+                        WHERE scheduled_at::date = $1::date
                           AND psychologist_id = $2
                           AND status <> 'cancelled'
+                          AND deleted_at IS NULL
                     )
                     SELECT slot
                     FROM slot_grid
@@ -217,12 +218,16 @@ export function createAppointmentService(db) {
 
         async createAppointmentBot({ patientId, psychologistId, startTime, endTime }) {
             try {
+                const start = new Date(startTime)
+                const end = new Date(endTime)
+                const durationMinutes = Math.round((end - start) / 60000) || 30
+
                 const result = await db.query(
                     `INSERT INTO appointments
-                       (patient_id, psychologist_id, start_time, end_time, status, created_via, created_at)
-                     VALUES ($1, $2, $3, $4, 'pending', 'whatsapp', NOW())
+                       (patient_id, psychologist_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, 'seguimiento', 'scheduled', NOW(), NOW())
                      RETURNING id`,
-                    [patientId, psychologistId, startTime, endTime]
+                    [patientId, psychologistId, startTime, durationMinutes]
                 )
                 return { ok: true, id: result.rows[0].id }
             } catch (err) {
@@ -237,12 +242,14 @@ export function createAppointmentService(db) {
         async getUpcomingAppointmentsByEmail(email) {
             try {
                 const result = await db.query(
-                    `SELECT id, start_time, appointment_type AS type, status
-                     FROM appointments
-                     WHERE patient_email = $1
-                       AND start_time >= NOW()
-                       AND status <> 'cancelled'
-                     ORDER BY start_time ASC
+                    `SELECT a.id, a.scheduled_at AS start_time, a.appointment_type AS type, a.status
+                     FROM appointments a
+                     JOIN patients p ON p.id = a.patient_id
+                     WHERE p.email = $1
+                       AND a.scheduled_at >= NOW()
+                       AND a.status <> 'cancelled'
+                       AND a.deleted_at IS NULL
+                     ORDER BY a.scheduled_at ASC
                      LIMIT ${CANCEL_LOOKUP_LIMIT}`,
                     [email.toLowerCase().trim()]
                 )
