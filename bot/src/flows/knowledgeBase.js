@@ -46,7 +46,7 @@ export const knowledgeBaseFlow = addKeyword(['📋 Info', 'info', 'información'
         'Tu elección:',
         { capture: true },
         async (ctx, { flowDynamic, state }) => {
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
             const cats = stateData._kbCats || Object.keys(CATEGORY_LABELS)
             const num = parseInt(ctx.body.trim(), 10)
 

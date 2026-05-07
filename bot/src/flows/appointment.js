@@ -157,7 +157,7 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
             const input = ctx.body.trim()
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
             const dates = stateData._availableDates || []
 
             let chosenISO = null
@@ -221,7 +221,7 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
         'Número de horario:',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
 
             if (stateData._error) {
                 await state.clear()
@@ -294,7 +294,7 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
         '¿Confirmás? (1 = Confirmar / 2 = Cancelar):',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
 
             if (stateData._error || stateData.step !== 'confirm') {
                 await state.clear()
@@ -405,7 +405,7 @@ export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
     })
     .addAnswer('*¿Qué hora?*\n\n_Formato: HH:MM — Ej: 14:00_', { capture: true }, async (ctx, { state, flowDynamic }) => {
         const hourStr = ctx.body.trim()
-        const stateData = await state.getAll()
+        const stateData = state.getMyState()
 
         if (!stateData.email?.includes('@')) {
             await flowDynamic('❌ Email inválido.\n\nEscribí *primera vez* para reiniciar.')
@@ -448,7 +448,7 @@ export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
     .addAnswer('*¿Confirmás la cita?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
         capture: true
     }, async (ctx, { state, flowDynamic }) => {
-        const stateData = await state.getAll()
+        const stateData = state.getMyState()
 
         if (stateData._error) {
             await state.clear()
@@ -507,7 +507,7 @@ export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
     })
     .addAnswer('*¿Qué hora?*\n\n_Formato: HH:MM — Ej: 14:00_', { capture: true }, async (ctx, { state, flowDynamic }) => {
         const hourStr = ctx.body.trim()
-        const stateData = await state.getAll()
+        const stateData = state.getMyState()
 
         if (!/^\d{4}-\d{2}-\d{2}$/.test(stateData.dateStr)) {
             await flowDynamic('❌ Fecha inválida. Escribí *seguimiento* para reiniciar.')
@@ -545,7 +545,7 @@ export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
     .addAnswer('*¿Confirmás?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
         capture: true
     }, async (ctx, { state, flowDynamic }) => {
-        const stateData = await state.getAll()
+        const stateData = state.getMyState()
 
         if (stateData._error) {
             await state.clear()
@@ -643,7 +643,7 @@ export const cancelAppointmentFlow = addKeyword(['cancelar cita', 'cancelar', 'r
         'Buscando tus turnos...',
         { capture: false },
         async (ctx, { state, flowDynamic }) => {
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
             const email = stateData.email
 
             const appointments = await getUpcomingAppointmentsByEmail(email)
@@ -685,7 +685,7 @@ export const cancelAppointmentFlow = addKeyword(['cancelar cita', 'cancelar', 'r
         'Tu elección:',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
-            const stateData = await state.getAll()
+            const stateData = state.getMyState()
 
             if (!stateData.step) {
                 await state.clear()
