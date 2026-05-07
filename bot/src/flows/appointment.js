@@ -445,9 +445,8 @@ export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
             `📋 *Resumen de Cita*\n\n• Tipo: Primera vez\n• Nombre: ${stateData.fullName}\n• Fecha: ${stateData.dateStr}\n• Hora: ${hourStr}\n• Duración: ${DURATIONS['primera vez']} min`
         )
     })
-    .addAnswer('*¿Confirmás la cita?*', {
-        capture: true,
-        buttons: [{ body: '✅ Confirmar' }, { body: '❌ Cancelar' }]
+    .addAnswer('*¿Confirmás la cita?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
+        capture: true
     }, async (ctx, { state, flowDynamic }) => {
         const stateData = await state.getAll()
 
@@ -543,9 +542,8 @@ export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
             `📋 *Resumen:*\n\n• Tipo: Seguimiento\n• Fecha: ${stateData.dateStr}\n• Hora: ${hourStr}\n• Duración: ${DURATIONS['seguimiento']} min`
         )
     })
-    .addAnswer('*¿Confirmás?*', {
-        capture: true,
-        buttons: [{ body: '✅ Confirmar' }, { body: '❌ Cancelar' }]
+    .addAnswer('*¿Confirmás?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
+        capture: true
     }, async (ctx, { state, flowDynamic }) => {
         const stateData = await state.getAll()
 
@@ -615,12 +613,7 @@ export const appointmentStatusFlow = addKeyword(['mis citas', 'ver cita', 'mi ci
             response += `   Estado: ${appt.status}\n\n`
         }
 
-        await flowDynamic(response, {
-            buttons: [
-                { body: '🏠 Menú Principal' },
-                { body: '📅 Nueva Cita' }
-            ]
-        })
+        await flowDynamic(response + '\nEscribí *menu* para volver al inicio o *agendar* para una nueva cita.')
     })
 
 // ─────────────────────────────────────────────────────────────────────────────

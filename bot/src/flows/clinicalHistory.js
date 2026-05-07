@@ -2,19 +2,12 @@ import { addAnswer, addKeyword } from '@builderbot/bot'
 
 export const clinicalHistoryFlow = [
     addKeyword(['📋 Mi Historia Clínica', 'historia', 'hc', 'mi historial'])
-        .addAnswer('*📋 Historia Clínica*\n\nTu información clínica está protegida según las normativas:\n\n🇲🇽 LFPDPPP (México)\n🇨🇴 Ley 1581 (Colombia)\n🇪🇸 RGPD (España)\n🇺🇸 HIPAA (USA)\n\n*Esta información solo la puede ver tu psicólogo tratante.*\n\n✅ Tus datos están seguros y protegidos.\n\n*¿Qué deseas hacer?*', { buttons: [
-            { body: '📝 Completar Historia' },
-            { body: '📄 Ver mi información' },
-            { body: '🏠 Volver al Menú' }
-        ]}),
+        .addAnswer('*📋 Historia Clínica*\n\nTu información clínica está protegida según las normativas:\n\n🇨🇴 Ley 1581 (Colombia) · 🇲🇽 LFPDPPP · 🇪🇸 RGPD · 🇺🇸 HIPAA\n\n✅ Solo tu psicólogo tratante puede ver estos datos.\n\n*¿Qué deseas hacer?*\n\n  1. Completar mi historia — escribí *completar historia*\n  2. Ver mi información — escribí *ver informacion*\n  3. Volver al menú — escribí *menu*'),
 
-    addKeyword('📝 Completar Historia')
-        .addAnswer('*📝 Completar Historia Clínica*\n\nPara crear tu historia clínica, necesito que completes un formulario.\n\nUn enlace será enviado a tu email.\n\n*¿Confirmas tu email?* Responde *sí* para continuar.', { buttons: [
-            { body: '✅ Sí, confirmar' },
-            { body: '🏠 Cancelar' }
-        ]}),
+    addKeyword(['completar historia', '📝 Completar Historia'])
+        .addAnswer('*📝 Completar Historia Clínica*\n\nPara crear tu historia clínica necesitás completar un formulario.\n\nUn enlace será enviado a tu email registrado.\n\n*¿Confirmás?* Respondé *sí* para continuar o *menu* para salir.'),
 
-    addKeyword('📄 Ver mi información')
-        .addAnswer('*📄 Tu Información*\n\nTu información personal está disponible en nuestra base de datos segura.\n\nPara acceder, tu psicólogo debe proporcionarte acceso.\n\n⚠️ *Por seguridad, no almacenamos datos sensibles aquí.*\n\n*¿Necesitas algo más?* Escribí *menu*.')
+    addKeyword(['ver informacion', 'ver información', '📄 Ver mi información'])
+        .addAnswer('*📄 Tu Información*\n\nTu información está en nuestra base de datos segura.\n\nPara acceder, tu psicólogo debe habilitarte el acceso.\n\n⚠️ *Por seguridad, no mostramos datos sensibles aquí.*\n\nEscribí *menu* para volver al inicio.')
 ]
 
