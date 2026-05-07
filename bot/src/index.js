@@ -85,7 +85,6 @@ const main = async () => {
     })
 
     const flow = createFlow([
-        catchAllFlow,
         helpFlow,
         ...mainMenuFlow,
         appointmentFlow,
@@ -96,7 +95,8 @@ const main = async () => {
         knowledgeBaseFlow,
         searchFlow,
         ...clinicalHistoryFlow,
-        ...registrationFlow
+        ...registrationFlow,
+        catchAllFlow,
     ])
 
     console.log('🚀 Creando bot...')
