@@ -32,9 +32,6 @@ import { knowledgeBaseFlow, searchFlow } from './flows/knowledgeBase.js'
 import { clinicalHistoryFlow } from './flows/clinicalHistory.js'
 import { registrationFlow } from './flows/registration.js'
 
-const catchAllFlow = addKeyword(['.*'])
-    .addAnswer('Recibí tu mensaje. Escribí *menu* para ver las opciones o *agendar* para reservar un turno.')
-
 const helpFlow = addKeyword(['ayuda', 'help', '?', 'socorro'])
     .addAnswer('*Opciones disponibles:*\n\n📅 Agendar / Cita\n📋 Mi Historia Clínica\n📚 Biblioteca\n🏠 Menú\n\n*Escribí una opción.*')
 
@@ -96,7 +93,6 @@ const main = async () => {
         searchFlow,
         ...clinicalHistoryFlow,
         ...registrationFlow,
-        catchAllFlow,
     ])
 
     console.log('🚀 Creando bot...')
