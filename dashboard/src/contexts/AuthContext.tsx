@@ -15,20 +15,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY))
 
   const login = useCallback(async (user: string, pass: string): Promise<boolean> => {
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: user, password: pass }),
-      })
-      if (!res.ok) return false
-      const { token: jwt } = await res.json()
-      sessionStorage.setItem(TOKEN_KEY, jwt)
-      setToken(jwt)
-      return true
-    } catch {
-      return false
-    }
+    const expectedUser = import.meta.env.VITE_AUTH_USER
+    const expectedPass = import.meta.env.VITE_AUTH_PASS
+    if (!expectedUser || !expectedPass) return false
+    if (user !== expectedUser || pass !== expectedPass) return false
+    const token = btoa(`${user}:${Date.now()}`)
+    sessionStorage.setItem(TOKEN_KEY, token)
+    setToken(token)
+    return true
   }, [])
 
   const logout = useCallback(() => {
