@@ -4,9 +4,6 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
-    # DNS resolver injected at startup from /etc/resolv.conf (works on Docker and Railway)
-    resolver ${NGINX_RESOLVER} valid=30s ipv6=off;
-
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     gzip_min_length 1000;
@@ -18,9 +15,8 @@ server {
     }
 
     location /api/ {
-        set $n8n_upstream ${N8N_INTERNAL_URL};
         rewrite ^/api/(.*) /webhook/$1 break;
-        proxy_pass $n8n_upstream;
+        proxy_pass ${N8N_INTERNAL_URL};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
