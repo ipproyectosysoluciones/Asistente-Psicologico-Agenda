@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS audit_log (
   psychologist_id UUID
 );
 
+-- If the table already existed (from init-db.sql which lacks changed_by/changed_at),
+-- add the missing columns idempotently so the trigger function does not fail.
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS changed_by TEXT;
+ALTER TABLE audit_log ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_audit_log_record     ON audit_log(table_name, record_id);
 CREATE INDEX IF NOT EXISTS idx_audit_log_changed_at ON audit_log(changed_at);
 
