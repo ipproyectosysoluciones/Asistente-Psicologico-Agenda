@@ -86,6 +86,13 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Sprint 7b — RBAC + Audit + GDPR + Backup + Monitoring (2026-05-08) — [PR #104](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/104) [PR #105](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/105) [PR #106](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/106) — v1.8.0
+- [x] **REQ-PSYCH-01** · `api-psychologists.json` — CRUD admin-only (soft-delete, last-admin guard, 409 en email duplicado)
+- [x] **REQ-AUDIT-01** · Migración 009 — `audit_log` + triggers AFTER INSERT/UPDATE/DELETE en `patients` y `appointments`
+- [x] **REQ-GDPR-01** · `api-gdpr-export.json` — export JSON por paciente (admin o psicólogo propietario, 404 anti-enumeración)
+- [x] **REQ-BACKUP-01** · `backup.sh` — `pg_restore --list` verify + `PGPASSWORD` + sin doble compresión
+- [x] **REQ-MONITOR-01** · `infrastructure/monitoring/railway-health-check.sh` — polling cada 60s, alerta webhook en 3 fallos consecutivos
+
 ### Sprint 7a — Multi-tenant Auth + Tenant Isolation (2026-05-08) — [PR #101](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/101) [PR #102](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/102) — v1.7.0
 - [x] **REQ-AUTH-01** · `api-auth-login.json` — auth DB-backed con pgcrypto `crypt()`, JWT embebe `psychologist_id` + `role` ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
 - [x] **REQ-AUTH-02** · Cuenta inactiva → 403; credenciales inválidas → 401 (nodo `IF - User Active` separado) ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
@@ -141,4 +148,4 @@
 | PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas (008 aplicada) |
 | CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy |
 | Automatizaciones | ✅ Funcional | Workflows activos, bugs n8n resueltos Sprint 6a |
-| Seguridad | ✅ Hardened | JWT embebe psychologist_id; tenant isolation; nginx rate limiting (Sprint 7a) |
+| Seguridad | ✅ Hardened | JWT + tenant isolation + rate limiting (7a); RBAC + audit + GDPR (7b) |
