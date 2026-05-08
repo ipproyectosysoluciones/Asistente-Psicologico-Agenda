@@ -31,9 +31,7 @@ FROM nginx:alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-RUN rm /etc/nginx/conf.d/default.conf
-
-COPY nginx.conf.template /etc/nginx/conf.d/app.conf.template
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 
 # Default for local docker-compose; override in Railway with:
 # N8N_INTERNAL_URL=http://n8n.railway.internal:5678
@@ -44,4 +42,4 @@ EXPOSE 80
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost/health || exit 1
 
-CMD ["/bin/sh", "-c", "envsubst '${N8N_INTERNAL_URL}' < /etc/nginx/conf.d/app.conf.template > /etc/nginx/conf.d/app.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "envsubst '${N8N_INTERNAL_URL}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"]
