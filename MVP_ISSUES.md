@@ -4,8 +4,8 @@
 **Última actualización**: 2026-05-08  
 **Branch de análisis**: `claude/analyze-mvp-issues-MvbwU`  
 **Total de issues**: 46 (12 críticos · 10 altos · 14 medios · 10 bajos)  
-**Resueltos**: ✅ C-01, C-02, C-03, C-04, C-05, C-07, C-10, C-12, H-01, H-02, H-03, H-04, H-05, H-06, M-02, M-04, M-05, M-08, M-10, M-14, L-04, L-06, L-08, L-10  
-**En progreso (Sprint 6a)**: REQ-AUTH-01, REQ-AUTH-02, REQ-AUTH-03, REQ-N8N-01, REQ-N8N-02, REQ-N8N-03 — branch `feature/sprint-6a-auth-fix` / issues [#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95), [#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96)
+**Resueltos**: ✅ C-01, C-02, C-03, C-04, C-05, C-06, C-07, C-08, C-09, C-10, C-11, C-12, H-01, H-02, H-03, H-04, H-05, H-06, H-07, H-08, H-09, H-10, M-02, M-04, M-05, M-08, M-10, M-14, L-04, L-06, L-08, L-10  
+**Sprint 6a (PR #97, 2026-05-08)**: ✅ REQ-AUTH-01/02/03 (JWT server-side) · REQ-N8N-01/02/03 (bugs n8n)
 
 ---
 

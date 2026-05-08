@@ -1,6 +1,6 @@
 # Roadmap — Asistente Psicológico Agenda
 
-**Última actualización**: 2026-05-08  
+**Última actualización**: 2026-05-08 (Sprint 6a)  
 **Estado**: MVP en producción en Railway  
 **Rama de desarrollo**: `dev` → `release` → `main`
 
@@ -72,35 +72,21 @@
 - [x] Fix CI: parámetro `file:` en `build-push-action` (no `dockerfile:`)
 - [x] Limpieza de ramas huérfanas
 
----
-
-## 🚧 En Progreso
-
-### Sprint 6a — JWT Auth Fix + n8n Workflow Bug Fixes (branch: `feature/sprint-6a-auth-fix`)
-- [ ] **REQ-AUTH-01** · Eliminar `VITE_JWT_SECRET` del bundle del dashboard ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
-- [ ] **REQ-AUTH-02** · Login endpoint en n8n (`POST /webhook/auth/login`) ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
-- [ ] **REQ-AUTH-03** · Migrar `AuthContext.tsx` para llamar al endpoint del servidor ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
-- [ ] **REQ-N8N-01** · Fix título de evento Google Calendar con nombre de paciente ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
-- [ ] **REQ-N8N-02** · Guard null en `confirmacion.json` → HTTP 404 en lugar de 500 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
-- [ ] **REQ-N8N-03** · Guard `DEFAULT_PSYCHOLOGIST_ID` en `api-create-patient.json` → HTTP 400 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+### Sprint 6a — JWT Auth Fix + n8n Workflow Bug Fixes (2026-05-08) — [PR #97](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/97)
+- [x] **REQ-AUTH-01** · Eliminar `VITE_JWT_SECRET` del bundle — removido de Dockerfile y CI ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [x] **REQ-AUTH-02** · Login endpoint en n8n (`POST /webhook/auth/login`) — nuevo `api-auth-login.json` ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [x] **REQ-AUTH-03** · `AuthContext.tsx` migrado a server-side auth + inactivity timer 60 min ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [x] **REQ-N8N-01** · Fix título de evento Google Calendar con nombre de paciente ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+- [x] **REQ-N8N-02** · Guard null en `confirmacion.json` → HTTP 404 en lugar de 500 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+- [x] **REQ-N8N-03** · Guard `DEFAULT_PSYCHOLOGIST_ID` en `api-create-patient.json` → HTTP 400 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
 
 ---
 
-## 🔴 Pendientes Críticos
-
-### n8n — Workflows con bugs estructurales
-- [ ] **C-06** · `$body.xxx` no es SQL válido en `api-create-appointment.json` → usar `$1`/`$2`
-- [ ] **C-08** · Referencias de nodos rotas en `agendamiento-flow.json` ("Email - No Disponible" vs "Gmail - No Disponible")
-- [ ] **C-09** · `$json.appointmentId` siempre null en `confirmacion.json`
-- [ ] **C-11** · INSERT en `api-create-patient.json` omite `psychologist_id` NOT NULL
-- [ ] **H-07/H-08** · SQL Injection por interpolación directa en `whatsapp-new-patient.json` y `agendamiento-flow.json`
-- [ ] **H-09** · SQL Injection + UUIDs sin comillas en `google-sheets-sync.json`
-- [ ] **M-11** · `$json.length` siempre `undefined` en nodo Postgres de `google-sheets-sync.json`
+## 🔴 Pendientes
 
 ### Dashboard
-- [ ] **H-10** · `fetch()` ignora `baseURL`; el cliente axios de `lib/api.ts` nunca se usa
 - [ ] **M-01** · `tsconfig.json jsx: "react-compiler"` → debe ser `"react-jsx"`
-- [ ] **M-03** · Password logueada en consola en `LoginPage.tsx`
+- [ ] **M-03** · Password logueada en consola en `LoginPage.tsx` *(Sprint 6b)*
 - [ ] **L-05** · Botones CTA de landing sin `href` ni `onClick`
 
 ### Infraestructura / DevOps
@@ -136,9 +122,9 @@
 | Área | Estado | Notas |
 |------|--------|-------|
 | Bot WhatsApp | ✅ Funcional | Booking + cancelación + FAQ |
-| n8n API | ⚠️ Parcial | APIs CRUD OK; workflows C-06/C-08/C-09/C-11 con bugs |
-| Dashboard | ✅ Funcional | Auth JWT, HC, paginación OK; api client pendiente |
+| n8n API | ✅ Funcional | APIs CRUD OK; bugs C-06/C-08/C-09/C-11 resueltos en Sprint 6a |
+| Dashboard | ✅ Funcional | Auth server-side JWT, HC, paginación OK |
 | PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas |
 | CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy |
-| Automatizaciones | ⚠️ Parcial | Activadas pero bugs de SQL en varios workflows |
-| Seguridad | ⚠️ Riesgo | SQL injection en 3 workflows n8n sin resolver |
+| Automatizaciones | ✅ Funcional | Workflows activos, bugs n8n resueltos en Sprint 6a |
+| Seguridad | ✅ Resuelto | VITE_JWT_SECRET eliminado; JWT firmado server-side (Sprint 6a) |
