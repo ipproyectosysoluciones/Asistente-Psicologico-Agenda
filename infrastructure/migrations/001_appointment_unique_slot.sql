@@ -7,5 +7,5 @@
 -- El índice parcial solo cubre turnos no cancelados, permitiendo reutilizar slots cancelados.
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_no_double_booking
-  ON appointments (psychologist_id, start_time)
+  ON appointments (psychologist_id, scheduled_at)
   WHERE status <> 'cancelled';

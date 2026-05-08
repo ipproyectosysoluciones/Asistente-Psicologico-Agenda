@@ -15,7 +15,7 @@ async function fetchStats() {
 }
 
 async function fetchUpcoming() {
-  return api.get('/appointments?status=scheduled&status=confirmed&limit=5&page=1')
+  return api.get('/appointments?status=scheduled,confirmed&limit=5&page=1')
 }
 
 function StatCard({ title, value, description, icon: Icon, iconBg = 'bg-primary/10', iconColor = 'text-primary' }: {
