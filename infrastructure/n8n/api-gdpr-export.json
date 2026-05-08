@@ -1,0 +1,253 @@
+{
+  "id": "api-gdpr-export",
+  "name": "API - GDPR Export",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "gdpr/export",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\nif (!payload.psychologist_id) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\n$input.item.json.jwtPsychologistId = payload.psychologist_id;\n$input.item.json.jwtRole = payload.role;\n$input.item.json.patientId = $input.item.json.query?.patient_id || null;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-verify",
+      "name": "Code - JWT Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-jwt-valid",
+              "leftValue": "={{ $json.jwtValid }}",
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-jwt",
+      "name": "IF - JWT válido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401,
+          "responseData": "={\"error\":\"Unauthorized\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, first_name, last_name, email, phone, date_of_birth, gender, consent_status, created_at, psychologist_id FROM patients WHERE id = $1::uuid AND deleted_at IS NULL",
+        "options": {
+          "queryReplacement": "={{ $json.patientId }}"
+        }
+      },
+      "id": "pg-fetch-patient",
+      "name": "PG - Fetch Patient",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.item.json;\nconst jwtRole = $('Code - JWT Verify').item.json.jwtRole;\nconst jwtPsychologistId = $('Code - JWT Verify').item.json.jwtPsychologistId;\n\n// Patient not found\nif (!row.id) {\n  $input.item.json._notFound = true;\n  return $input.item;\n}\n\n// Tenant isolation: non-admin can only access own patients (ADR-5)\nconst isAdmin = jwtRole === 'admin';\nconst isOwner = row.psychologist_id === jwtPsychologistId;\nif (!isAdmin && !isOwner) {\n  // Return 404, not 403 — prevents UUID enumeration\n  $input.item.json._notFound = true;\n  return $input.item;\n}\n\n$input.item.json._accessOk = true;\n$input.item.json._patientId = row.id;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "code-access-check",
+      "name": "Code - Access Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-access-ok",
+              "leftValue": "={{ $json._accessOk }}",
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-access-ok",
+      "name": "IF - Access OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 404,
+          "responseData": "={\"error\":\"Not Found\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-404",
+      "name": "Respond 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, scheduled_at, duration_minutes, appointment_type, status, session_notes, google_meet_link, created_at FROM appointments WHERE patient_id = $1::uuid AND deleted_at IS NULL ORDER BY scheduled_at DESC",
+        "options": {
+          "queryReplacement": "={{ $json._patientId }}"
+        }
+      },
+      "id": "pg-fetch-appointments",
+      "name": "PG - Fetch Appointments",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const appointments = $input.all().map(r => r.json);\nconst patient = $('PG - Fetch Patient').item.json;\nconst patientId = patient.id;\n// Store appointments on the item for later merge\nreturn [{ json: { _patientId: patientId, _patient: patient, _appointments: appointments } }];",
+        "options": {}
+      },
+      "id": "code-store-appointments",
+      "name": "Code - Store Appointments",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'chief_complaint' AS section, cc.id, cc.complaint_text AS content, cc.created_at FROM chief_complaint cc WHERE cc.patient_id = $1::uuid AND cc.is_current = TRUE\nUNION ALL\nSELECT 'diagnosis' AS section, d.id, d.primary_diagnosis_name AS content, d.created_at FROM diagnosis d WHERE d.patient_id = $1::uuid AND d.is_current = TRUE\nUNION ALL\nSELECT 'treatment_plan' AS section, tp.id, tp.short_term_goals AS content, tp.created_at FROM treatment_plan tp WHERE tp.patient_id = $1::uuid AND tp.is_current = TRUE\nORDER BY section, created_at DESC",
+        "options": {
+          "queryReplacement": "={{ $json._patientId }}"
+        }
+      },
+      "id": "pg-fetch-clinical-history",
+      "name": "PG - Fetch Clinical History",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const clinicalRows = $input.all().map(r => r.json);\nconst stored = $('Code - Store Appointments').item.json;\nconst patient = stored._patient;\nconst appointments = stored._appointments;\nconst patientId = stored._patientId;\n\nconst exportData = {\n  exported_at: new Date().toISOString(),\n  patient: {\n    id: patient.id,\n    first_name: patient.first_name,\n    last_name: patient.last_name,\n    email: patient.email,\n    phone: patient.phone,\n    date_of_birth: patient.date_of_birth,\n    gender: patient.gender,\n    consent_status: patient.consent_status,\n    created_at: patient.created_at\n  },\n  appointments,\n  clinical_history: clinicalRows\n};\n\nreturn [{ json: { export: JSON.stringify(exportData, null, 2), patient_id: patientId } }];",
+        "options": {}
+      },
+      "id": "code-build-export",
+      "name": "Code - Build Export JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (table_name, record_id, operation, psychologist_id) VALUES ('patients', $1::uuid, 'EXPORT', $2::uuid)",
+        "options": {
+          "queryReplacement": "={{ $json.patient_id }},={{ $('Code - JWT Verify').item.json.jwtPsychologistId }}"
+        }
+      },
+      "id": "pg-write-audit",
+      "name": "PG - Write EXPORT Audit",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2750, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={{ $('Code - Build Export JSON').item.json.export }}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" },
+              { "name": "Content-Disposition", "value": "={{ 'attachment; filename=\"gdpr_export_' + $('Code - Build Export JSON').item.json.patient_id + '.json\"' }}" }
+            ]
+          }
+        }
+      },
+      "id": "respond-200",
+      "name": "Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [3000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Code - JWT Verify", "type": "main", "index": 0 }]]
+    },
+    "Code - JWT Verify": {
+      "main": [[{ "node": "IF - JWT válido", "type": "main", "index": 0 }]]
+    },
+    "IF - JWT válido": {
+      "main": [
+        [{ "node": "PG - Fetch Patient", "type": "main", "index": 0 }],
+        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Fetch Patient": {
+      "main": [[{ "node": "Code - Access Check", "type": "main", "index": 0 }]]
+    },
+    "Code - Access Check": {
+      "main": [[{ "node": "IF - Access OK", "type": "main", "index": 0 }]]
+    },
+    "IF - Access OK": {
+      "main": [
+        [{ "node": "PG - Fetch Appointments", "type": "main", "index": 0 }],
+        [{ "node": "Respond 404", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Fetch Appointments": {
+      "main": [[{ "node": "Code - Store Appointments", "type": "main", "index": 0 }]]
+    },
+    "Code - Store Appointments": {
+      "main": [[{ "node": "PG - Fetch Clinical History", "type": "main", "index": 0 }]]
+    },
+    "PG - Fetch Clinical History": {
+      "main": [[{ "node": "Code - Build Export JSON", "type": "main", "index": 0 }]]
+    },
+    "Code - Build Export JSON": {
+      "main": [[{ "node": "PG - Write EXPORT Audit", "type": "main", "index": 0 }]]
+    },
+    "PG - Write EXPORT Audit": {
+      "main": [[{ "node": "Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
