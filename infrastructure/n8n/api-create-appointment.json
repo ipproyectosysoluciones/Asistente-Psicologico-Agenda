@@ -7,7 +7,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\nif (!payload.psychologist_id) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\n$input.item.json.jwtPsychologistId = payload.psychologist_id;\n$input.item.json.jwtSub = payload.sub;\n$input.item.json.jwtRole = payload.role;\nreturn $input.item;",
         "options": {}
       },
       "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
@@ -27,16 +27,16 @@
       "parameters": {
         "operation": "executeQuery",
         "query": "WITH inserted AS (\n  INSERT INTO appointments (psychologist_id, patient_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)\n  VALUES ($1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5, 'scheduled', NOW(), NOW())\n  RETURNING id, patient_id, psychologist_id, scheduled_at, duration_minutes, appointment_type\n)\nSELECT\n  i.id,\n  i.scheduled_at,\n  i.duration_minutes,\n  i.appointment_type,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name\nFROM inserted i\nJOIN patients p ON p.id = i.patient_id\nJOIN psychologists ps ON ps.id = i.psychologist_id",
-        "options": { "queryReplacement": "={{ $json.body.psychologist_id }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}" }
+        "options": { "queryReplacement": "={{ $json.jwtPsychologistId }},={{ $json.body.patient_id }},={{ $json.body.scheduled_at }},={{ $json.body.duration_minutes || 50 }},={{ $json.body.appointment_type }}" }
       },
-      "id": "pg-insert", "name": "PG - INSERT Cita", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
+      "id": "pg-insert", "name": "PG - INSERT Cita", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1500, 150]
     },
     {
       "parameters": {
         "jsCode": "const appt = $input.item.json;\nconst start = new Date(appt.scheduled_at);\nconst end = new Date(start.getTime() + (appt.duration_minutes * 60 * 1000));\nconst webhookUrl = $env.WEBHOOK_URL || '';\nconst cancelLink = `${webhookUrl}/webhook/confirm/${appt.id}?action=cancelar`;\n\n$input.item.json.calendar_start = start.toISOString();\n$input.item.json.calendar_end = end.toISOString();\n$input.item.json.calendar_title = `Consulta Psicológica — ${appt.first_name} ${appt.last_name}`;\n$input.item.json.calendar_description = `Tipo: ${appt.appointment_type}\\n\\n¿Necesitás cancelar?\\n${cancelLink}\\n\\nPara reprogramar, contactanos directamente.`;\n\nreturn $input.item;",
         "options": {}
       },
-      "id": "code-prepare", "name": "Code - Preparar Calendario", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1250, 150]
+      "id": "code-prepare", "name": "Code - Preparar Calendario", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1750, 150]
     },
     {
       "parameters": {
@@ -113,6 +113,25 @@
         "options": { "responseCode": 201, "responseData": "={{ JSON.stringify({ success: true, appointment_id: $('PG - INSERT Cita').item.json.id, calendar_event_id: $('Google Calendar - Crear Evento').item.json.id }) }}" }
       },
       "id": "respond-201", "name": "Respond 201", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [2750, 150]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 1 FROM patients WHERE id = $1::uuid AND psychologist_id = $2::uuid AND deleted_at IS NULL",
+        "options": { "queryReplacement": "={{ $json.body.patient_id }},={{ $json.jwtPsychologistId }}" }
+      },
+      "id": "pg-patient-check", "name": "PG - Patient Ownership Check", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "rule": { "conditions": { "conditions": [{ "id": "c2", "value1": "={{ $json['?column?'] }}", "operation": "equals", "value2": 1 }], "combinator": "and" }, "options": {} },
+        "options": {}
+      },
+      "id": "if-patient-owned", "name": "IF - Paciente del Psicólogo", "type": "n8n-nodes-base.if", "typeVersion": 2, "position": [1250, 150]
+    },
+    {
+      "parameters": { "options": { "responseCode": 403, "responseData": "={\"error\":\"patient not owned by this psychologist\"}" } },
+      "id": "respond-403", "name": "Respond 403", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1500, 350]
     }
   ],
   "connections": {
@@ -120,8 +139,15 @@
     "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
     "IF - JWT válido": {
       "main": [
-        [{ "node": "PG - INSERT Cita", "type": "main" }],
+        [{ "node": "PG - Patient Ownership Check", "type": "main" }],
         [{ "node": "Respond 401", "type": "main" }]
+      ]
+    },
+    "PG - Patient Ownership Check": { "main": [[{ "node": "IF - Paciente del Psicólogo", "type": "main" }]] },
+    "IF - Paciente del Psicólogo": {
+      "main": [
+        [{ "node": "PG - INSERT Cita", "type": "main" }],
+        [{ "node": "Respond 403", "type": "main" }]
       ]
     },
     "PG - INSERT Cita": { "main": [[{ "node": "Code - Preparar Calendario", "type": "main" }]] },

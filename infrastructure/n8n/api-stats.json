@@ -7,7 +7,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\nif (!payload.psychologist_id) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\n$input.item.json.jwtPsychologistId = payload.psychologist_id;\n$input.item.json.jwtSub = payload.sub;\n$input.item.json.jwtRole = payload.role;\nreturn $input.item;",
         "options": {}
       },
       "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
@@ -26,16 +26,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  COUNT(*) FILTER (WHERE status IN ('scheduled', 'confirmed') AND scheduled_at::date = CURRENT_DATE)::int AS today_appointments,\n  COUNT(*) FILTER (WHERE status = 'completed' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_completed,\n  COUNT(*) FILTER (WHERE status = 'no_show' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_noshow,\n  COUNT(*) FILTER (WHERE status = 'cancelled' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_cancelled,\n  (SELECT COUNT(*)::int FROM patients WHERE deleted_at IS NULL) AS total_patients,\n  (SELECT COUNT(*)::int FROM patients WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW())) AS new_patients_month\nFROM appointments\nWHERE deleted_at IS NULL",
-        "options": {}
+        "query": "SELECT\n  COUNT(*) FILTER (WHERE status IN ('scheduled', 'confirmed') AND scheduled_at::date = CURRENT_DATE)::int AS today_appointments,\n  COUNT(*) FILTER (WHERE status = 'completed' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_completed,\n  COUNT(*) FILTER (WHERE status = 'no_show' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_noshow,\n  COUNT(*) FILTER (WHERE status = 'cancelled' AND DATE_TRUNC('month', scheduled_at) = DATE_TRUNC('month', NOW()))::int AS month_cancelled,\n  (SELECT COUNT(*)::int FROM patients WHERE deleted_at IS NULL AND psychologist_id = $1::uuid) AS total_patients,\n  (SELECT COUNT(*)::int FROM patients WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', NOW()) AND psychologist_id = $1::uuid) AS new_patients_month\nFROM appointments\nWHERE deleted_at IS NULL\n  AND psychologist_id = $1::uuid",
+        "options": { "queryReplacement": "={{ $json.jwtPsychologistId }}" }
       },
       "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 150]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT TO_CHAR(DATE_TRUNC('week', scheduled_at), 'YYYY-MM-DD') AS week, COUNT(*)::integer AS count FROM appointments WHERE scheduled_at >= NOW() - INTERVAL '8 weeks' AND deleted_at IS NULL GROUP BY 1 ORDER BY 1",
-        "options": {}
+        "query": "SELECT TO_CHAR(DATE_TRUNC('week', scheduled_at), 'YYYY-MM-DD') AS week, COUNT(*)::integer AS count FROM appointments WHERE scheduled_at >= NOW() - INTERVAL '8 weeks' AND deleted_at IS NULL AND psychologist_id = $1::uuid GROUP BY 1 ORDER BY 1",
+        "options": { "queryReplacement": "={{ $json.jwtPsychologistId }}" }
       },
       "id": "pg-weekly", "name": "PG - Weekly Stats", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 300]
     },
