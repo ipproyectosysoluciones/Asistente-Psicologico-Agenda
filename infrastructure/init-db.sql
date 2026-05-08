@@ -25,6 +25,9 @@ CREATE TABLE psychologists (
     rate_first_session INT DEFAULT 60,
     rate_followup INT DEFAULT 45,
     
+    -- Role
+    role VARCHAR(20) NOT NULL DEFAULT 'psychologist',
+
     -- Status
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
