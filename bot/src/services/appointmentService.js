@@ -60,7 +60,7 @@ export const DURATIONS = {
     seguimiento: 50
 }
 
-export const DAYS = [2, 3, 4, 5, 6, 0]
+export const DAYS = [...WORKING_WEEKDAYS]
 
 export function createAppointmentService(db) {
     return {
@@ -329,7 +329,13 @@ let _pool = null
 function _getPool() {
     if (!_pool) {
         if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL environment variable is required')
-        _pool = new Pool({ connectionString: process.env.DATABASE_URL })
+        _pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+            max: 5,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+        })
     }
     return _pool
 }
