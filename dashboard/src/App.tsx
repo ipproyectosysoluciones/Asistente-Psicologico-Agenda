@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from '@/components/ui/sonner'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthGuard } from '@/components/auth/AuthGuard'
+import { AdminGuard } from '@/components/auth/AdminGuard'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import DashboardPage from '@/pages/dashboard/DashboardPage'
@@ -12,6 +13,8 @@ import LeadsPage from '@/pages/leads/LeadsPage'
 import LandingPage from '@/pages/landing/LandingPage'
 import CapturePage from '@/pages/capture/CapturePage'
 import LoginPage from '@/pages/auth/LoginPage'
+import PsychologistsPage from '@/pages/admin/PsychologistsPage'
+import CompliancePage from '@/pages/admin/CompliancePage'
 
 export default function App() {
   return (
@@ -31,6 +34,8 @@ export default function App() {
           <Route path="/patients" element={<ErrorBoundary serviceName="Pacientes"><PatientsPage /></ErrorBoundary>} />
           <Route path="/patients/:id" element={<ErrorBoundary serviceName="HC Paciente"><PatientDetailPage /></ErrorBoundary>} />
           <Route path="/leads" element={<ErrorBoundary serviceName="Leads"><LeadsPage /></ErrorBoundary>} />
+          <Route path="/admin/psychologists" element={<AdminGuard><PsychologistsPage /></AdminGuard>} />
+          <Route path="/admin/compliance" element={<AdminGuard><CompliancePage /></AdminGuard>} />
         </Route>
       </Routes>
     </AuthProvider>

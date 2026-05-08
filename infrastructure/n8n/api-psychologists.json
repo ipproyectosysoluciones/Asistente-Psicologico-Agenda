@@ -175,7 +175,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, email, role, is_active, created_at FROM psychologists WHERE is_active = TRUE ORDER BY created_at ASC",
+        "query": "SELECT id, email, COALESCE(full_name, email) AS full_name, role, is_active, created_at FROM psychologists WHERE is_active = TRUE ORDER BY created_at ASC",
         "options": {}
       },
       "id": "pg-list",
