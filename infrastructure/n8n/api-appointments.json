@@ -25,7 +25,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const q = $input.item.json.query || {};\nconst page = Math.max(1, parseInt(q.page || '1', 10));\nconst limit = Math.min(100, Math.max(1, parseInt(q.limit || '20', 10)));\n$input.item.json.pg_limit = limit;\n$input.item.json.pg_offset = (page - 1) * limit;\n$input.item.json.pg_page = page;\nreturn $input.item;",
+        "jsCode": "const q = $input.item.json.query || {};\nconst page = Math.max(1, parseInt(q.page || '1', 10));\nconst limit = Math.min(100, Math.max(1, parseInt(q.limit || '20', 10)));\nconst status = q.status || null;\n$input.item.json.pg_limit = limit;\n$input.item.json.pg_offset = (page - 1) * limit;\n$input.item.json.pg_page = page;\n$input.item.json.pg_status = status;\nreturn $input.item;",
         "options": {}
       },
       "id": "pagination", "name": "Code - Pagination Params", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1000, 150]
@@ -33,8 +33,8 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name,\n  COUNT(*) OVER() AS total_count\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\nORDER BY a.scheduled_at DESC\nLIMIT $1 OFFSET $2",
-        "options": { "queryReplacement": "={{ $json.pg_limit }},={{ $json.pg_offset }}" }
+        "query": "SELECT\n  a.id,\n  a.scheduled_at AT TIME ZONE COALESCE(ps.timezone, 'America/Mexico_City') AS scheduled_at,\n  a.duration_minutes,\n  a.appointment_type,\n  a.status,\n  a.session_notes,\n  a.google_meet_link,\n  p.id AS patient_id,\n  p.first_name,\n  p.last_name,\n  p.email,\n  p.phone,\n  ps.full_name AS psychologist_name,\n  COUNT(*) OVER() AS total_count\nFROM appointments a\nJOIN patients p ON p.id = a.patient_id\nJOIN psychologists ps ON ps.id = a.psychologist_id\nWHERE a.deleted_at IS NULL\n  AND ($3::text IS NULL OR a.status = $3::text)\nORDER BY a.scheduled_at ASC\nLIMIT $1 OFFSET $2",
+        "options": { "queryReplacement": "={{ $json.pg_limit }},={{ $json.pg_offset }},={{ $json.pg_status }}" }
       },
       "id": "postgres", "name": "PostgreSQL", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1250, 150]
     },
