@@ -104,13 +104,6 @@
 
 ---
 
-## 🟡 Pendientes (verificados 2026-05-08)
-
-### Infraestructura / DevOps
-- [ ] **L-01** · `.env.template` — verificar presencia de `GOOGLE_SHEET_ID`, `NOTIFICATION_EMAIL` y `ALERT_WEBHOOK_URL` (acceso restringido, verificar manualmente)
-
----
-
 ## ✅ Issues cerrados (verificados como resueltos 2026-05-08)
 
 ### Dashboard
@@ -129,6 +122,7 @@
 - [x] **L-02** · `registrationSimpleFlow`/`newPatientKeywordFlow` — no existen en bot/src
 - [x] **L-03** · `consentFlow`/`dataRequestFlow` — no registrados (eliminados del codebase)
 - [x] **L-07** · Carácter cirílico `оператор` — no presente en ningún archivo
+- [x] **L-01** · `.env.template` — `GOOGLE_SHEET_ID`, `NOTIFICATION_EMAIL` y `ALERT_WEBHOOK_URL` presentes
 
 ---
 
