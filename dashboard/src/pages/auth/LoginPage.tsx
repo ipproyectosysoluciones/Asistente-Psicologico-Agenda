@@ -5,16 +5,16 @@ export default function LoginPage() {
   const { login } = useAuth()
   const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     e.stopPropagation()
-    const ok = await login(user, pass)
-    if (ok) {
+    const result = await login(user, pass)
+    if (result.success) {
       window.location.href = '/dashboard'
     } else {
-      setError(true)
+      setError(result.error ?? 'Credenciales incorrectas')
     }
   }
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
           <input
             type="text"
             value={user}
-            onChange={e => { setUser(e.target.value); setError(false) }}
+            onChange={e => { setUser(e.target.value); setError(null) }}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
             placeholder="admin"
           />
@@ -43,15 +43,15 @@ export default function LoginPage() {
           <input
             type="password"
             value={pass}
-            onChange={e => { setPass(e.target.value); setError(false) }}
+            onChange={e => { setPass(e.target.value); setError(null) }}
             style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
             placeholder="••••••••"
           />
         </div>
 
-        {error && (
+        {error !== null && (
           <p style={{ fontSize: 13, color: '#ef4444', textAlign: 'center', marginBottom: 16 }}>
-            Credenciales incorrectas
+            {error}
           </p>
         )}
 

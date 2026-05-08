@@ -86,10 +86,39 @@
     },
     {
       "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1b2c3d4-set-patient-name",
+              "name": "patient_name",
+              "value": "={{ $('Webhook - Nueva Cita').item.json.body.patient_name }}",
+              "type": "string"
+            },
+            {
+              "id": "a2b3c4d5-set-appointment-id",
+              "name": "appointment_id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-patient-name",
+      "name": "Set - Capture Patient Name",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
         "calendar": "primary",
-        "title": "=Consulta - {{ $json.body.patient_name }}",
-        "start": "={{ $json.body.scheduled_at }}",
-        "end": "={{ $json.body.scheduled_end }}",
+        "title": "={{ $json.patient_name }}",
+        "start": "={{ $('Webhook - Nueva Cita').item.json.body.scheduled_at }}",
+        "end": "={{ $('Webhook - Nueva Cita').item.json.body.scheduled_end }}",
         "options": {}
       },
       "id": "create-calendar",
@@ -97,8 +126,8 @@
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.1,
       "position": [
-        1000,
-        500
+        1500,
+        300
       ]
     },
     {
@@ -113,7 +142,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        1250,
+        1750,
         300
       ]
     },
@@ -172,6 +201,16 @@
       ]
     },
     "PostgreSQL - Crear Cita": {
+      "main": [
+        [
+          {
+            "node": "Set - Capture Patient Name",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Set - Capture Patient Name": {
       "main": [
         [
           {

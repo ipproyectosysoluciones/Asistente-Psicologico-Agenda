@@ -66,10 +66,8 @@ jobs:
           context: ./dashboard
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard:latest
-          build-args: |
-            VITE_AUTH_USER=${{ secrets.VITE_AUTH_USER }}
-            VITE_AUTH_PASS=${{ secrets.VITE_AUTH_PASS }}
-            VITE_JWT_SECRET=${{ secrets.JWT_SECRET }}
+          # VITE_AUTH_USER, VITE_AUTH_PASS, VITE_JWT_SECRET removed — auth is now server-side via n8n
+          # build-args block kept for future clinic branding args if needed
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

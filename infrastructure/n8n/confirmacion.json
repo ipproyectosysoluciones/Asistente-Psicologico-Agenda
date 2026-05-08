@@ -107,6 +107,53 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-rows-exist",
+              "leftValue": "={{ $input.all().length }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-appointment-exists",
+      "name": "IF - Appointment Exists",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1750, 50]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 404,
+          "responseData": "{\"error\":\"appointment_not_found\"}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-404-confirm",
+      "name": "Respond - 404",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 250]
+    },
+    {
+      "parameters": {
         "jsCode": "const item = $input.item.json;\nif (!item.phone) return { json: { ...item, skip: true } };\nconst d = new Date(item.scheduled_at);\nconst pad = n => String(n).padStart(2, '0');\nconst dateStr = pad(d.getDate()) + '/' + pad(d.getMonth()+1) + '/' + d.getFullYear();\nconst timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());\nconst qrData = 'CITA PSICOLOGICA\\nPaciente: ' + item.first_name + ' ' + item.last_name + '\\nFecha: ' + dateStr + '\\nHora: ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '');\nconst qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrData);\nconst message = 'Cita confirmada!\\n\\nHola ' + item.first_name + ', confirmamos tu cita:\\n\\nFecha: ' + dateStr + ' a las ' + timeStr + ' hs\\nTipo: ' + item.appointment_type + '\\nDuracion: ' + item.duration_minutes + ' min\\nPsicologo: ' + (item.psychologist_name || '') + '\\n\\nEscaneá el QR para guardar los detalles de tu cita:\\n' + qrUrl;\nreturn { json: { ...item, qrUrl, message, skip: false } };",
         "options": {}
       },
@@ -114,7 +161,7 @@
       "name": "Code - Build QR Confirmar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1750, 50]
+      "position": [2000, 50]
     },
     {
       "parameters": {
@@ -203,7 +250,13 @@
       ]
     },
     "PG - Confirmar": { "main": [[{ "node": "PG - Fetch Detalles", "type": "main" }]] },
-    "PG - Fetch Detalles": { "main": [[{ "node": "Code - Build QR Confirmar", "type": "main" }]] },
+    "PG - Fetch Detalles": { "main": [[{ "node": "IF - Appointment Exists", "type": "main" }]] },
+    "IF - Appointment Exists": {
+      "main": [
+        [{ "node": "Code - Build QR Confirmar", "type": "main" }],
+        [{ "node": "Respond - 404", "type": "main" }]
+      ]
+    },
     "Code - Build QR Confirmar": { "main": [[{ "node": "IF - Tiene Teléfono", "type": "main" }]] },
     "IF - Tiene Teléfono": {
       "main": [
