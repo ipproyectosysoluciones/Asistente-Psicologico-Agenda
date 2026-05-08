@@ -15,7 +15,7 @@ export default [
         React: 'readonly',
       },
     },
-    rules: { 'no-console': 'warn' },
+    rules: { 'no-console': 'error' },
   },
   {
     files: ['src/pages/auth/**/*.{ts,tsx}'],

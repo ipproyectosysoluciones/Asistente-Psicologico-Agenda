@@ -80,13 +80,18 @@
 - [x] **REQ-N8N-02** · Guard null en `confirmacion.json` → HTTP 404 en lugar de 500 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
 - [x] **REQ-N8N-03** · Guard `DEFAULT_PSYCHOLOGIST_ID` en `api-create-patient.json` → HTTP 400 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
 
+### Sprint 6b — Dashboard UI Polish (2026-05-08) — [PR #99](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/99)
+- [x] **REQ-UI-01** · `CapturePage.tsx` migrada a shadcn/ui (Card, Input, Button, Label, Sonner) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
+- [x] **REQ-UI-02** · `LoginPage.tsx` migrada a shadcn/ui + loading state + M-03 resuelto ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
+- [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
+- [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
+
 ---
 
 ## 🔴 Pendientes
 
 ### Dashboard
 - [ ] **M-01** · `tsconfig.json jsx: "react-compiler"` → debe ser `"react-jsx"`
-- [ ] **M-03** · Password logueada en consola en `LoginPage.tsx` *(Sprint 6b)*
 - [ ] **L-05** · Botones CTA de landing sin `href` ni `onClick`
 
 ### Infraestructura / DevOps
