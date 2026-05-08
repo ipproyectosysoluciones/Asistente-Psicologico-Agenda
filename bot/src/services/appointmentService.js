@@ -32,6 +32,9 @@ const WORKING_WEEKDAYS = new Set([1, 2, 3, 4, 5]) // Mon–Fri
 /** Max upcoming appointments returned for cancellation / Máximo de turnos próximos para cancelación */
 const CANCEL_LOOKUP_LIMIT = 5
 
+/** Clinic timezone for slot display / Zona horaria del consultorio para mostrar slots */
+const CLINIC_TIMEZONE = process.env.CLINIC_TIMEZONE || 'America/Bogota'
+
 /**
  * Day-of-week name labels in Spanish (short).
  * Etiquetas cortas de día de la semana en español.
@@ -201,10 +204,17 @@ export function createAppointmentService(db) {
                     [dateISO, psychologistId, LUNCH_START_HOUR, LUNCH_END_HOUR]
                 )
 
+                const timeFmt = new Intl.DateTimeFormat('en-US', {
+                    timeZone: CLINIC_TIMEZONE,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                })
                 return result.rows.map(row => {
                     const dt = new Date(row.slot)
-                    const hh = String(dt.getUTCHours()).padStart(2, '0')
-                    const min = String(dt.getUTCMinutes()).padStart(2, '0')
+                    const parts = timeFmt.formatToParts(dt)
+                    const hh = parts.find(p => p.type === 'hour')?.value ?? '00'
+                    const min = parts.find(p => p.type === 'minute')?.value ?? '00'
                     const isoVal = row.slot instanceof Date
                         ? row.slot.toISOString().replace('Z', '')
                         : String(row.slot)
@@ -216,18 +226,18 @@ export function createAppointmentService(db) {
             }
         },
 
-        async createAppointmentBot({ patientId, psychologistId, startTime, endTime }) {
+        async createAppointmentBot({ patientId, psychologistId, startTime, endTime, appointmentType = 'seguimiento' }) {
             try {
                 const start = new Date(startTime)
                 const end = new Date(endTime)
-                const durationMinutes = Math.round((end - start) / 60000) || 30
+                const durationMinutes = Math.round((end - start) / 60000) || DURATIONS[appointmentType] || 50
 
                 const result = await db.query(
                     `INSERT INTO appointments
                        (patient_id, psychologist_id, scheduled_at, duration_minutes, appointment_type, status, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, 'seguimiento', 'scheduled', NOW(), NOW())
+                     VALUES ($1, $2, $3, $4, $5, 'scheduled', NOW(), NOW())
                      RETURNING id`,
-                    [patientId, psychologistId, startTime, durationMinutes]
+                    [patientId, psychologistId, startTime, durationMinutes, appointmentType]
                 )
                 return { ok: true, id: result.rows[0].id }
             } catch (err) {
@@ -347,6 +357,6 @@ function _prod() {
 // Named re-exports — backward-compat for appointment.js imports
 export const appointmentService = new Proxy({}, { get: (_, k) => _prod()[k] })
 export const getAvailableSlots = (...args) => _prod().getAvailableSlots(...args)
-export const createAppointmentBot = (...args) => _prod().createAppointmentBot(...args)
+export const createAppointmentBot = (args) => _prod().createAppointmentBot(args)
 export const getUpcomingAppointmentsByEmail = (...args) => _prod().getUpcomingAppointmentsByEmail(...args)
 export const cancelAppointmentBot = (...args) => _prod().cancelAppointmentBot(...args)

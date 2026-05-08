@@ -48,8 +48,11 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - WA_PHONE_NUMBER=${WA_PHONE_NUMBER}
       - WA_CREDS_B64=${WA_CREDS_B64}
+      - WA_FORCE_RESET=${WA_FORCE_RESET:-false}
       - BOT_SESSION_PATH=/app/bot_sessions
+      - CLINIC_TIMEZONE=${CLINIC_TIMEZONE:-America/Bogota}
       - HEALTH_PORT=3001
+      - HOST=0.0.0.0
     volumes:
       - bot_sessions:/app/AsistentePsicologico_sessions
     networks:

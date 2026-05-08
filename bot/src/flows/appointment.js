@@ -107,6 +107,16 @@ function buildSlotListText(slots) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Session timeout helpers / Helpers de timeout de sesión
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SESSION_TTL_MS = 30 * 60 * 1000 // 30 minutes
+
+function isSessionExpired(stateData) {
+    return stateData?.flow_expires_at && Date.now() > stateData.flow_expires_at
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Phase 2: Appointment Booking Flow / Flujo de reserva de turno
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -126,14 +136,24 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
         '📅 *Reservar Turno*\n\n¿Cuál es tu email?',
         { capture: true },
         async (ctx, { state }) => {
-            await state.update({ email: ctx.body.trim(), step: 'email' })
+            await state.update({
+                email: ctx.body.trim(),
+                step: 'email',
+                flow_expires_at: Date.now() + SESSION_TTL_MS,
+            })
             console.log(`[appointmentFlow] step=email_captured phone=${ctx.from?.slice(-4)}`)
         }
     )
     .addAnswer(
         '¿Cuál es tu nombre completo?',
         { capture: true },
-        async (ctx, { state }) => {
+        async (ctx, { state, flowDynamic }) => {
+            const stateData = state.getMyState()
+            if (isSessionExpired(stateData)) {
+                await state.clear()
+                await flowDynamic('⏳ Tu sesión expiró. Escribí *agendar* para comenzar de nuevo.')
+                return
+            }
             await state.update({ fullName: ctx.body.trim() })
         }
     )
@@ -141,6 +161,12 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
         '*¿Qué fecha preferís?*\n\nElegí un número o escribí *otra* para ingresar una fecha manualmente:',
         { capture: true },
         async (ctx, { state, flowDynamic }) => {
+            const stateData = state.getMyState()
+            if (isSessionExpired(stateData)) {
+                await state.clear()
+                await flowDynamic('⏳ Tu sesión expiró. Escribí *agendar* para comenzar de nuevo.')
+                return
+            }
             // Build and show date list / Mostrar lista de fechas
             const dates = getNextAvailableDates(7)
             let dateMenu = ''
@@ -349,7 +375,8 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
                 patientId,
                 psychologistId,
                 startTime: startDt.toISOString(),
-                endTime: endDt.toISOString()
+                endTime: endDt.toISOString(),
+                appointmentType: stateData.appointmentType || 'seguimiento',
             })
 
             if (result.ok) {
@@ -385,203 +412,22 @@ export const appointmentFlow = addKeyword(['agendar', 'cita', 'turno', 'reservar
     )
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Existing flows (unchanged — regression boundary)
-// Flows existentes (sin cambios — límite de regresión)
+// Thin entry-point wrappers — pre-set appointmentType then delegate to appointmentFlow
+// Wrappers de entrada — pre-configuran el tipo y delegan a appointmentFlow
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const primeraVezFlow = addKeyword(['primera vez', '👤 Primera vez'])
-    .addAnswer(
-        '👤 *Primera Consulta*\n\n• Duración: 90 min\n• Costo: $60 USD\n\n*¿Cuál es tu nombre completo?*',
-        { capture: true },
-        async (ctx, { state }) => {
-            await state.update({ appointmentType: 'primera vez', fullName: ctx.body.trim() })
-        }
-    )
-    .addAnswer('*¿Cuál es tu email?*', { capture: true }, async (ctx, { state }) => {
-        await state.update({ email: ctx.body.trim() })
-    })
-    .addAnswer('*¿Qué fecha?*\n\n_Formato: YYYY-MM-DD — Ej: 2025-05-15_', { capture: true }, async (ctx, { state }) => {
-        await state.update({ dateStr: ctx.body.trim() })
-    })
-    .addAnswer('*¿Qué hora?*\n\n_Formato: HH:MM — Ej: 14:00_', { capture: true }, async (ctx, { state, flowDynamic }) => {
-        const hourStr = ctx.body.trim()
-        const stateData = state.getMyState()
-
-        if (!stateData.email?.includes('@')) {
-            await flowDynamic('❌ Email inválido.\n\nEscribí *primera vez* para reiniciar.')
-            await state.update({ _error: true })
-            return
-        }
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(stateData.dateStr)) {
-            await flowDynamic('❌ Fecha inválida (YYYY-MM-DD).\n\nEscribí *primera vez* para reiniciar.')
-            await state.update({ _error: true })
-            return
-        }
-        if (!/^\d{2}:\d{2}$/.test(hourStr)) {
-            await flowDynamic('❌ Hora inválida (HH:MM).\n\nEscribí *primera vez* para reiniciar.')
-            await state.update({ _error: true })
-            return
-        }
-
-        const validation = appointmentService.validateTimeSlot(stateData.dateStr, hourStr)
-        if (!validation.valid) {
-            await flowDynamic(`❌ ${validation.error}\n\nEscribí *primera vez* para reiniciar.`)
-            await state.update({ _error: true })
-            return
-        }
-
-        const psychologistId = process.env.DEFAULT_PSYCHOLOGIST_ID
-        const available = await appointmentService.isSlotAvailable(
-            psychologistId, validation.scheduledAt, DURATIONS['primera vez']
-        )
-        if (!available) {
-            await flowDynamic('⚠️ Ese horario ya está ocupado.\n\nEscribí *primera vez* para elegir otro horario.')
-            await state.update({ _error: true })
-            return
-        }
-
-        await state.update({ hourStr, scheduledAt: validation.scheduledAt })
-        await flowDynamic(
-            `📋 *Resumen de Cita*\n\n• Tipo: Primera vez\n• Nombre: ${stateData.fullName}\n• Fecha: ${stateData.dateStr}\n• Hora: ${hourStr}\n• Duración: ${DURATIONS['primera vez']} min`
-        )
-    })
-    .addAnswer('*¿Confirmás la cita?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
-        capture: true
-    }, async (ctx, { state, flowDynamic }) => {
-        const stateData = state.getMyState()
-
-        if (stateData._error) {
-            await state.clear()
-            return
-        }
-
-        if (ctx.body.toLowerCase().includes('cancel')) {
-            await flowDynamic('❌ Cita cancelada. Escribí *menu*.')
-            await state.clear()
-            return
-        }
-
-        try {
-            const psychologistId = process.env.DEFAULT_PSYCHOLOGIST_ID
-            let patient = await appointmentService.findPatientByEmail(stateData.email)
-            if (!patient) {
-                patient = await appointmentService.createPatient({
-                    fullName: stateData.fullName,
-                    email: stateData.email,
-                    psychologistId
-                })
-            }
-
-            await appointmentService.createAppointment({
-                psychologistId,
-                patientId: patient.id,
-                scheduledAt: stateData.scheduledAt,
-                appointmentType: 'primera vez'
-            })
-
-            await flowDynamic(
-                `✅ *¡Cita Agendada!*\n\n📅 ${stateData.dateStr} a las ${stateData.hourStr}\n• Primera vez — ${DURATIONS['primera vez']} min\n\nTe contactaremos para confirmar.\n\nEscribí *menu*.`
-            )
-        } catch (error) {
-            if (error.message === 'HORARIO_OCUPADO') {
-                await flowDynamic('⚠️ Horario ocupado. Escribí *primera vez* para elegir otro.')
-            } else {
-                console.error('Appointment error:', error)
-                await flowDynamic('⚠️ Error al agendar. Contactanos directamente.')
-            }
-        }
-
-        await state.clear()
+    .addAction(async (ctx, { state, gotoFlow }) => {
+        await state.update({ appointmentType: 'primera vez' })
+        return gotoFlow(appointmentFlow)
     })
 
 export const seguimientoFlow = addKeyword(['seguimiento', '🔄 Seguimiento'])
-    .addAnswer(
-        '🔄 *Seguimiento*\n\n• Duración: 50 min\n• Costo: $45 USD\n\n*¿Cuál es tu email de registro?*',
-        { capture: true },
-        async (ctx, { state }) => {
-            await state.update({ appointmentType: 'seguimiento', email: ctx.body.trim() })
-        }
-    )
-    .addAnswer('*¿Qué fecha?*\n\n_Formato: YYYY-MM-DD — Ej: 2025-05-15_', { capture: true }, async (ctx, { state }) => {
-        await state.update({ dateStr: ctx.body.trim() })
+    .addAction(async (ctx, { state, gotoFlow }) => {
+        await state.update({ appointmentType: 'seguimiento' })
+        return gotoFlow(appointmentFlow)
     })
-    .addAnswer('*¿Qué hora?*\n\n_Formato: HH:MM — Ej: 14:00_', { capture: true }, async (ctx, { state, flowDynamic }) => {
-        const hourStr = ctx.body.trim()
-        const stateData = state.getMyState()
 
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(stateData.dateStr)) {
-            await flowDynamic('❌ Fecha inválida. Escribí *seguimiento* para reiniciar.')
-            await state.update({ _error: true })
-            return
-        }
-        if (!/^\d{2}:\d{2}$/.test(hourStr)) {
-            await flowDynamic('❌ Hora inválida. Escribí *seguimiento* para reiniciar.')
-            await state.update({ _error: true })
-            return
-        }
-
-        const validation = appointmentService.validateTimeSlot(stateData.dateStr, hourStr)
-        if (!validation.valid) {
-            await flowDynamic(`❌ ${validation.error}\n\nEscribí *seguimiento* para reiniciar.`)
-            await state.update({ _error: true })
-            return
-        }
-
-        const psychologistId = process.env.DEFAULT_PSYCHOLOGIST_ID
-        const available = await appointmentService.isSlotAvailable(
-            psychologistId, validation.scheduledAt, DURATIONS['seguimiento']
-        )
-        if (!available) {
-            await flowDynamic('⚠️ Horario ocupado. Escribí *seguimiento* para elegir otro.')
-            await state.update({ _error: true })
-            return
-        }
-
-        await state.update({ hourStr, scheduledAt: validation.scheduledAt })
-        await flowDynamic(
-            `📋 *Resumen:*\n\n• Tipo: Seguimiento\n• Fecha: ${stateData.dateStr}\n• Hora: ${hourStr}\n• Duración: ${DURATIONS['seguimiento']} min`
-        )
-    })
-    .addAnswer('*¿Confirmás?*\n\nRespondé *1* para Confirmar o *2* para Cancelar.', {
-        capture: true
-    }, async (ctx, { state, flowDynamic }) => {
-        const stateData = state.getMyState()
-
-        if (stateData._error) {
-            await state.clear()
-            return
-        }
-
-        if (ctx.body.toLowerCase().includes('cancel')) {
-            await flowDynamic('❌ Cita cancelada. Escribí *menu*.')
-            await state.clear()
-            return
-        }
-
-        try {
-            const patient = await appointmentService.findPatientByEmail(stateData.email)
-
-            await appointmentService.createAppointment({
-                psychologistId: process.env.DEFAULT_PSYCHOLOGIST_ID,
-                patientId: patient?.id || null,
-                scheduledAt: stateData.scheduledAt,
-                appointmentType: 'seguimiento'
-            })
-
-            await flowDynamic(
-                `✅ *¡Cita Agendada!*\n\n📅 ${stateData.dateStr} a las ${stateData.hourStr}\n• Seguimiento — ${DURATIONS['seguimiento']} min\n\nTe contactaremos para confirmar.\n\nEscribí *menu*.`
-            )
-        } catch (error) {
-            if (error.message === 'HORARIO_OCUPADO') {
-                await flowDynamic('⚠️ Horario ocupado. Escribí *seguimiento* para elegir otro.')
-            } else {
-                console.error('Appointment error:', error)
-                await flowDynamic('⚠️ Error al agendar. Contactanos directamente.')
-            }
-        }
-
-        await state.clear()
-    })
 
 // appointmentStatusFlow is a regression boundary — DO NOT MODIFY.
 // appointmentStatusFlow es un límite de regresión — NO MODIFICAR.

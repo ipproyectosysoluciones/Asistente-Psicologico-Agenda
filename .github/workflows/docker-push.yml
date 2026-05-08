@@ -59,6 +59,7 @@ jobs:
           build-args: |
             VITE_AUTH_USER=${{ secrets.VITE_AUTH_USER }}
             VITE_AUTH_PASS=${{ secrets.VITE_AUTH_PASS }}
+            VITE_JWT_SECRET=${{ secrets.JWT_SECRET }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
