@@ -78,7 +78,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT id, email, role, is_active\nFROM psychologists\nWHERE email = $1\n  AND password_hash = crypt($2, password_hash)\n  AND is_active = true",
+        "query": "SELECT id, email, role, is_active\nFROM psychologists\nWHERE email = $1\n  AND password_hash = crypt($2, password_hash)",
         "options": {
           "queryReplacement": "={{ $json.email }},={{ $json.password }}"
         }
@@ -137,6 +137,52 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-user-active",
+              "leftValue": "={{ $json.is_active }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "g7h8i9j0-k1l2-3456-mnop-567890123456",
+      "name": "IF - User Active",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 450]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 403,
+          "responseData": "={\"error\":\"account_inactive\"}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-403",
+      "name": "Respond - 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 650]
+    },
+    {
+      "parameters": {
         "jsCode": "const { createHmac } = require('crypto');\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst exp = now + 28800;\n\nconst b64url = (obj) =>\n  Buffer.from(JSON.stringify(obj)).toString('base64url');\n\nconst header = b64url({ alg: 'HS256', typ: 'JWT' });\nconst payload = b64url({\n  sub: $json.email,\n  psychologist_id: $json.id,\n  role: $json.role || 'psychologist',\n  iat: now,\n  exp\n});\nconst sig = createHmac('sha256', secret)\n  .update(`${header}.${payload}`)\n  .digest('base64url');\n\nconst token = `${header}.${payload}.${sig}`;\n\nreturn [{ json: {\n  token,\n  expires_at: new Date(exp * 1000).toISOString(),\n  psychologist_id: $json.id,\n  role: $json.role || 'psychologist'\n} }];",
         "options": {}
       },
@@ -144,7 +190,7 @@
       "name": "Code - Sign JWT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1500, 450]
+      "position": [1750, 450]
     },
     {
       "parameters": {
@@ -162,7 +208,7 @@
       "name": "Respond - 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1750, 450]
+      "position": [2000, 450]
     }
   ],
   "connections": {
@@ -221,7 +267,7 @@
       "main": [
         [
           {
-            "node": "Code - Sign JWT",
+            "node": "IF - User Active",
             "type": "main",
             "index": 0
           }
@@ -229,6 +275,24 @@
         [
           {
             "node": "Respond - 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - User Active": {
+      "main": [
+        [
+          {
+            "node": "Code - Sign JWT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - 403",
             "type": "main",
             "index": 0
           }
