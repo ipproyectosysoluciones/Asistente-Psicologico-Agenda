@@ -9,12 +9,27 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import api from '@/lib/api'
 import { getStatusConfig } from '@/lib/status'
+import { AppointmentsChart } from './AppointmentsChart'
 
-async function fetchStats() {
+interface StatsResponse {
+  today_appointments: number
+  month_completed: number
+  month_noshow: number
+  month_cancelled: number
+  total_patients: number
+  new_patients_month: number
+  weekly_appointments: { week: string; count: number }[]
+}
+
+interface UpcomingResponse {
+  appointments: Record<string, unknown>[]
+}
+
+async function fetchStats(): Promise<StatsResponse> {
   return api.get('/stats')
 }
 
-async function fetchUpcoming() {
+async function fetchUpcoming(): Promise<UpcomingResponse> {
   return api.get('/appointments?status=scheduled,confirmed&limit=5&page=1')
 }
 
@@ -67,6 +82,7 @@ export default function DashboardPage() {
     new_patients_month: 0,
     month_noshow: 0,
     month_cancelled: 0,
+    weekly_appointments: [] as { week: string; count: number }[],
   }
 
   const upcoming: Record<string, unknown>[] = upcomingData?.appointments ?? []
@@ -168,6 +184,19 @@ export default function DashboardPage() {
               })}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Appointments trend chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Citas — últimas 8 semanas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading
+            ? <Skeleton className="h-64 w-full" />
+            : <AppointmentsChart data={s.weekly_appointments ?? []} />
+          }
         </CardContent>
       </Card>
     </div>
