@@ -86,6 +86,15 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Sprint 7a — Multi-tenant Auth + Tenant Isolation (2026-05-08) — [PR #101](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/101) [PR #102](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/102) — v1.7.0
+- [x] **REQ-AUTH-01** · `api-auth-login.json` — auth DB-backed con pgcrypto `crypt()`, JWT embebe `psychologist_id` + `role` ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-AUTH-02** · Cuenta inactiva → 403; credenciales inválidas → 401 (nodo `IF - User Active` separado) ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-TENANT-01** · `api-appointments.json` + `api-create-appointment.json` — filtro `AND psychologist_id = $N::uuid` ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-TENANT-02** · `api-patients.json` + `api-patient-detail.json` + `api-create-patient.json` — filtro tenant ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-TENANT-03** · `api-stats.json` — KPIs y weekly stats filtrados por `psychologist_id` del JWT ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-MIGRATION-01** · Migración 008 — `role` + `is_active` en tabla `psychologists` (idempotente) ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+- [x] **REQ-RATELIMIT-01** · nginx `limit_req_zone` — 10r/s API general, 1r/12s auth (anti-brute-force) ([#103](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/103))
+
 ---
 
 ## 🔴 Pendientes
@@ -97,7 +106,7 @@
 ### Infraestructura / DevOps
 - [ ] **M-06** · `update_updated_at()` definida dos veces en `init-db.sql`
 - [ ] **M-07** · `Prognosis` con mayúscula en `init-db.sql`
-- [ ] **M-09** · `bot-compose.yml` sin `DATABASE_URL` ni `DEFAULT_PSYCHOLOGIST_ID`
+- [x] **M-09** · `bot-compose.yml` sin `DATABASE_URL` ni `DEFAULT_PSYCHOLOGIST_ID` — resuelto en hotfix
 - [ ] **M-12** · `PGPASSWORD` faltante en `backup.sh` — backup silencioso falla
 - [ ] **M-13** · Doble compresión en `backup.sh` (`-Fc` + gzip)
 - [ ] **L-09** · `bot-compose.yml` con `network_mode: host` incompatible con bridge
@@ -127,9 +136,9 @@
 | Área | Estado | Notas |
 |------|--------|-------|
 | Bot WhatsApp | ✅ Funcional | Booking + cancelación + FAQ |
-| n8n API | ✅ Funcional | APIs CRUD OK; bugs C-06/C-08/C-09/C-11 resueltos Sprint 6a |
+| n8n API | ✅ Funcional | APIs CRUD OK; tenant isolation + DB-backed auth (Sprint 7a) |
 | Dashboard | ✅ Funcional | Auth server-side JWT, HC, paginación OK |
-| PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas |
+| PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas (008 aplicada) |
 | CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy |
 | Automatizaciones | ✅ Funcional | Workflows activos, bugs n8n resueltos Sprint 6a |
-| Seguridad | ✅ Resuelto | VITE_JWT_SECRET eliminado; JWT firmado server-side (Sprint 6a) |
+| Seguridad | ✅ Hardened | JWT embebe psychologist_id; tenant isolation; nginx rate limiting (Sprint 7a) |
