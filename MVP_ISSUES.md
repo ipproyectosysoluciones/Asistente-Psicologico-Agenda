@@ -4,7 +4,7 @@
 **Última actualización**: 2026-05-08  
 **Branch de análisis**: `claude/analyze-mvp-issues-MvbwU`  
 **Total de issues**: 46 (12 críticos · 10 altos · 14 medios · 10 bajos)  
-**Resueltos**: ✅ C-07, C-10, C-12, H-05, H-06, M-02, M-04, M-05, M-08, M-14, L-08, L-10
+**Resueltos**: ✅ C-01, C-02, C-03, C-04, C-05, C-07, C-10, C-12, H-01, H-02, H-03, H-04, H-05, H-06, M-02, M-04, M-05, M-08, M-10, M-14, L-04, L-06, L-08, L-10
 
 ---
 
@@ -19,98 +19,34 @@
 
 ## 🔴 CRÍTICOS (12) — El sistema no funciona sin corregirlos
 
-### C-01 · Flujos `primera vez` y `seguimiento` nunca se registran
+### ✅ C-01 · Flujos `primera vez` y `seguimiento` nunca se registran — RESUELTO
 
-**Archivo**: `bot/src/flows/appointment.js` líneas 15 y 132  
-**Rama sugerida**: `feature/fix-appointment-flow-registration`
-
-```js
-// PROBLEMA: resultado descartado, nunca exportado
-addKeyword('primera vez').addAction(...)
-addKeyword('seguimiento').addAction(...)
-```
-
-Todo el wizard de agendamiento multi-paso es **código muerto**. Los usuarios que presionen esos botones no reciben respuesta.
-
-**Solución**: Asignar a constantes exportadas e incluirlas en `createFlow()`.
-
-```js
-export const primeraVezFlow = addKeyword('primera vez').addAction(...)
-export const seguimientoFlow = addKeyword('seguimiento').addAction(...)
-```
+**Resuelto en**: Sprint 2 + P4 / commit `3d0478d`
+`primeraVezFlow` y `seguimientoFlow` son constantes exportadas. P4 los convirtió en thin wrappers con `gotoFlow(appointmentFlow)`.
 
 ---
 
-### C-02 · `appointmentFlow` spreado como objeto en lugar de array
+### ✅ C-02 · `appointmentFlow` spreado como objeto en lugar de array — RESUELTO
 
-**Archivo**: `bot/src/index.js` línea 64  
-**Rama sugerida**: `feature/fix-createflow-spread`
-
-```js
-// PROBLEMA: appointmentFlow es un objeto único, no un array
-...appointmentFlow,
-```
-
-Hacer spread de un objeto plano en un array literal itera las claves del objeto, no los pasos del flujo.
-
-**Solución**: `appointmentFlow,` (sin spread) o convertirlo en array.
+**Resuelto en**: Sprint 1 / commit `dcb4710`
 
 ---
 
-### C-03 · `clinicalHistoryFlow` y `registrationFlow` (arrays) no se spreadan
+### ✅ C-03 · `clinicalHistoryFlow` y `registrationFlow` (arrays) no se spreadan — RESUELTO
 
-**Archivo**: `bot/src/index.js` líneas 69-70  
-**Rama sugerida**: `feature/fix-createflow-spread`
-
-```js
-// PROBLEMA: son arrays pero se pasan sin spread
-clinicalHistoryFlow,
-registrationFlow
-```
-
-`createFlow()` recibe arrays anidados → flujos de historia clínica y registro no funcionan.
-
-**Solución**: `...clinicalHistoryFlow, ...registrationFlow`
+**Resuelto en**: Sprint 1 / commit `dcb4710`
 
 ---
 
-### C-04 · Operador `$ne` de MongoDB en fileDb.js — siempre retorna `[]`
+### ✅ C-04 · Operador `$ne` de MongoDB en fileDb.js — siempre retorna `[]` — RESUELTO
 
-**Archivo**: `bot/src/services/fileDb.js` líneas 113-118  
-**Rama sugerida**: `feature/fix-filedb-query`
-
-```js
-// PROBLEMA: find() hace item[k] === v, entonces $ne nunca matchea
-const appointments = await jsonDb.find('appointments', {
-    patientId,
-    status: { $ne: 'cancelled' }  // siempre false
-})
-```
-
-`getAppointments()` siempre retorna `[]`.
-
-**Solución**:
-```js
-const all = await jsonDb.findAll('appointments')
-return all.filter(a => a.patientId === patientId && a.status !== 'cancelled')
-```
+**Resuelto en**: Sprint 2 — `fileDb.js` eliminado, bot usa PostgreSQL directamente.
 
 ---
 
-### C-05 · Import nombrado de `export default` — `appointmentFlow` es `undefined`
+### ✅ C-05 · Import nombrado de `export default` — RESUELTO
 
-**Archivos**: `bot/src/flows/appointment.js` línea 257 · `bot/src/index.js` línea 7  
-**Rama sugerida**: `feature/fix-appointment-exports`
-
-```js
-// appointment.js — solo export default:
-export default appointmentFlow
-
-// index.js — import nombrado (retorna undefined en ES Modules):
-import { appointmentFlow } from './flows/appointment.js'
-```
-
-**Solución**: Cambiar a exports nombrados en `appointment.js` o ajustar el import.
+**Resuelto en**: Sprint 2 — todos los flujos usan named exports.
 
 ---
 
@@ -194,39 +130,27 @@ Toda creación de pacientes desde el dashboard falla con violación de constrain
 
 ## 🟠 ALTOS (10) — Funcionalidad core gravemente afectada
 
-### H-01 · Flujo multi-paso usa `addAction` en lugar de `addAnswer+capture`
+### ✅ H-01 · Flujo multi-paso usa `addAction` en lugar de `addAnswer+capture` — RESUELTO
 
-**Archivo**: `bot/src/flows/appointment.js` líneas 15-130  
-**Rama sugerida**: `feature/fix-appointment-capture-flow`
-
-En BuilderBot, los pasos `addAction` encadenados se ejecutan todos en el mismo mensaje trigger, no secuencialmente. Se requiere `.addAnswer(..., { capture: true }).addAction(...)` para captura paso a paso.
+**Resuelto en**: Sprint 2 — flujo reescrito con patrón `addAnswer + capture`.
 
 ---
 
-### H-02 · Arquitectura dual: bot usa JSON file Y PostgreSQL para pacientes
+### ✅ H-02 · Arquitectura dual: bot usa JSON file Y PostgreSQL — RESUELTO
 
-**Archivo**: `bot/src/flows/appointment.js` líneas 100-116  
-**Rama sugerida**: `feature/fix-single-database-source`
-
-El bot busca pacientes en `fileDb` (JSON) pero guarda citas en PostgreSQL. Si el paciente existe en PG pero no en el JSON, `patient?.id` es `undefined` → violación de NOT NULL en `appointments.patient_id`.
+**Resuelto en**: Sprint 2 — `fileDb.js` eliminado; bot usa solo PostgreSQL vía `appointmentService`.
 
 ---
 
-### H-03 · `cancelAppointmentFlow` es un stub — no cancela nada
+### ✅ H-03 · `cancelAppointmentFlow` es un stub — RESUELTO
 
-**Archivo**: `bot/src/flows/appointment.js` líneas 251-255  
-**Rama sugerida**: `feature/implement-cancel-appointment`
-
-Captura el email pero no hace ninguna query. Envía mensaje de éxito falso al usuario.
+**Resuelto en**: Sprint 2 — `cancelAppointmentBot` implementado en `appointmentService.js`.
 
 ---
 
-### H-04 · Conflicto de keyword `primera vez` entre registration.js y appointment.js
+### ✅ H-04 · Conflicto de keyword `primera vez` entre flows — RESUELTO
 
-**Archivos**: `bot/src/flows/registration.js` línea 18 · `bot/src/flows/appointment.js` línea 15  
-**Rama sugerida**: `feature/fix-keyword-conflicts`
-
-Dos flujos registran el mismo keyword. Comportamiento indefinido (generalmente gana el primero registrado). También hay conflicto con `'cancelar'` que puede activarse durante la confirmación.
+**Resuelto en**: P4 / commit `3d0478d` — `primeraVezFlow`/`seguimientoFlow` usan `gotoFlow(appointmentFlow)`, eliminando el keyword duplicado.
 
 ---
 
@@ -363,10 +287,9 @@ El bot requiere ambas variables de entorno para funcionar. Sin ellas usa credenc
 
 ---
 
-### M-10 · n8n sin `depends_on: postgres` y webhook URL hardcodeado a `localhost`
+### ✅ M-10 · n8n sin `depends_on: postgres` — RESUELTO
 
-**Archivo**: `infrastructure/docker-compose.yml` líneas 25-47  
-n8n puede arrancar antes que postgres. `WEBHOOK_URL=http://localhost:5678` no es alcanzable desde servicios externos.
+**Resuelto en**: Sprint 5 + migration runner — `docker-compose.yml` tiene `depends_on: postgres: condition: service_healthy` y `migrate: condition: service_completed_successfully`.
 
 ---
 
@@ -423,10 +346,9 @@ Los flujos de consentimiento y exportación de datos son inaccesibles para los u
 
 ---
 
-### L-04 · Flujos de historia clínica son stubs sin lógica real
+### ✅ L-04 · Flujos de historia clínica son stubs — RESUELTO
 
-**Archivo**: `bot/src/flows/clinicalHistory.js` líneas 11-18  
-"Completar Historia" dice que enviará un enlace por email (nunca sucede). "Ver mi información" no recupera datos reales.
+**Resuelto en**: Sprint 5 / commit `112c1a7` — HC module con 10 workflows n8n, página de detalle y 5 tabs de HC en el dashboard.
 
 ---
 
@@ -437,10 +359,9 @@ Los botones "Escribinos por WhatsApp" y "Agendar Cita" no tienen `href` ni `onCl
 
 ---
 
-### L-06 · Todos los workflows de automatización tienen `active: false`
+### ✅ L-06 · Todos los workflows tienen `active: false` — RESUELTO
 
-**Archivos**: `recordatorios.json`, `confirmacion.json`, `no-show.json`, `agendamiento-flow.json`, etc.  
-Al importar en n8n, ningún workflow de automatización se activa automáticamente.
+**Resuelto en**: Sprint 3 — todos los workflows críticos tienen `active: true`.
 
 ---
 
@@ -474,18 +395,28 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 
 ## Resumen ejecutivo
 
-| Severidad | Cantidad | Área principal afectada |
-|-----------|----------|------------------------|
-| 🔴 Crítico | 12 | Bot flows, n8n queries, dashboard producción |
-| 🟠 Alto | 10 | BuilderBot patterns, seguridad SQL, env config |
-| 🟡 Medio | 14 | TypeScript, auth, Docker, backup, n8n |
-| 🔵 Bajo | 10 | Stubs, código muerto, CI/CD, UX |
-| **Total** | **46** | |
+| Severidad | Total | Resueltos | Pendientes |
+|-----------|-------|-----------|------------|
+| 🔴 Crítico | 12 | 9 | 3 (C-06, C-08, C-09, C-11) |
+| 🟠 Alto | 10 | 6 | 4 (H-07, H-08, H-09, H-10) |
+| 🟡 Medio | 14 | 7 | 7 |
+| 🔵 Bajo | 10 | 5 | 5 |
+| **Total** | **46** | **24** (52%) | **22** |
 
-## Próximos pasos
+## Pendientes prioritarios (próxima sesión)
 
-1. Crear issue en GitHub por cada ítem de este documento
-2. Asignar labels: `critical`, `high`, `medium`, `low` + `bug` / `security`
-3. Priorizar los C-01 a C-05 (bot completamente no funcional) para Sprint 1
-4. C-06 a C-12 (n8n y dashboard) para Sprint 2
-5. H-07, H-08, H-09 (seguridad SQL injection) como hotfix urgente
+### 🔥 Urgente — Seguridad
+- H-07, H-08, H-09 · SQL Injection en 3 workflows n8n → parametrizar con `$1`/`$2`
+
+### 🔴 Críticos funcionales
+- C-06 · `$body.xxx` inválido en `api-create-appointment.json`
+- C-08 · Referencias de nodos rotas en `agendamiento-flow.json`
+- C-09 · `$json.appointmentId` null en `confirmacion.json`
+- C-11 · INSERT falta `psychologist_id` en `api-create-patient.json`
+
+### 🟠 Altos funcionales
+- H-10 · API client dashboard (`fetch` ignora `baseURL`, axios no se usa)
+
+### 🟡 Medios
+- M-03 · Password en console.log
+- M-12/M-13 · backup.sh PGPASSWORD + doble compresión

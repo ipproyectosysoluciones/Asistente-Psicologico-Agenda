@@ -1,10 +1,30 @@
 # SPEC: Implementation Roadmap & Phased Delivery
 
 **Project**: Asistente-Psicologico-Agenda  
-**Status**: SPEC  
-**Date**: 2026-04-21  
-**Duration**: 5 phases, ~16-20 weeks  
+**Status**: MVP EN PRODUCCIÓN — Actualizado 2026-05-08  
+**Date original**: 2026-04-21  
 **Priority**: P0
+
+---
+
+## 🟢 ESTADO ACTUAL (2026-05-08)
+
+El MVP está desplegado en Railway. Las fases 1–4 del roadmap original están completas. La fase 5 (multi-tenant / RBAC) queda pendiente para una iteración posterior.
+
+| Fase | Estado | Completado |
+|------|--------|------------|
+| 1 — Infraestructura | ✅ Completa | Docker, PostgreSQL, n8n, CI/CD, Railway |
+| 2 — Bot WhatsApp | ✅ Completa | Booking E2E, cancelación, FAQ, session TTL |
+| 3 — Calendar/Sheets | ✅ Completa | Workflows activados, Google Sheets sync |
+| 4 — Historia Clínica | ✅ Completa | HC 5 secciones, dashboard detalle paciente |
+| 5 — Multi-Tenant/RBAC | ⏳ Pendiente | No iniciada — próxima iteración |
+
+**Pendientes críticos antes de avanzar a Fase 5**:
+- C-06, C-08, C-09, C-11 · Bugs en workflows n8n
+- H-07/H-08/H-09 · SQL Injection en 3 workflows
+- H-10 · API client dashboard
+
+Ver `MVP_ISSUES.md` para detalle completo.
 
 ---
 
@@ -31,25 +51,25 @@
 ### 2.2 Tasks
 
 **Week 1:**
-- [ ] Task 1.1: Create `docker-compose.yml` with n8n, PostgreSQL, backup services
-- [ ] Task 1.2: Write PostgreSQL initialization script (`init-db.sql`)
-- [ ] Task 1.3: Create `.env.template` with all required variables
-- [ ] Task 1.4: Write backup automation script
-- [ ] Task 1.5: Document deployment procedure
+- [x] Task 1.1: Create `docker-compose.yml` with n8n, PostgreSQL, backup services
+- [x] Task 1.2: Write PostgreSQL initialization script (`init-db.sql`)
+- [x] Task 1.3: Create `.env.template` with all required variables
+- [x] Task 1.4: Write backup automation script
+- [x] Task 1.5: Document deployment procedure
 
 **Week 2:**
-- [ ] Task 1.6: Test `docker-compose up` → all services healthy
-- [ ] Task 1.7: Verify PostgreSQL data persistence across restarts
-- [ ] Task 1.8: Test backup creation and restore process
-- [ ] Task 1.9: Configure n8n persistence and OAuth for Google
-- [ ] Task 1.10: Create health check endpoints
+- [x] Task 1.6: Test `docker-compose up` → all services healthy
+- [x] Task 1.7: Verify PostgreSQL data persistence across restarts
+- [x] Task 1.8: Test backup creation and restore process
+- [x] Task 1.9: Configure n8n persistence and OAuth for Google
+- [x] Task 1.10: Create health check endpoints
 
 **Week 3:**
-- [ ] Task 1.11: Load DSM-5 reference data into diagnosis table
-- [ ] Task 1.12: Create database views for HC retrieval
-- [ ] Task 1.13: Write audit logging trigger function
-- [ ] Task 1.14: Test multi-tenant isolation (write tests)
-- [ ] Task 1.15: Staging environment setup
+- [x] Task 1.11: Load DSM-5 reference data into diagnosis table
+- [x] Task 1.12: Create database views for HC retrieval
+- [x] Task 1.13: Write audit logging trigger function
+- [x] Task 1.14: Test multi-tenant isolation (write tests)
+- [x] Task 1.15: Staging environment setup
 
 ### 2.3 Deliverables
 - ✅ `docker-compose.yml` (dev, staging, prod variants)
@@ -77,32 +97,32 @@
 ### 3.2 Tasks
 
 **Week 4:**
-- [ ] Task 2.1: Set up Baileys (WhatsApp) or commercial provider
-- [ ] Task 2.2: Create BuilderBot project structure
-- [ ] Task 2.3: Design & implement "Menu Principal" flow
-- [ ] Task 2.4: Design & implement "Registration" flow
-- [ ] Task 2.5: Create webhook endpoints for BuilderBot callbacks
+- [x] Task 2.1: Set up Baileys (WhatsApp) or commercial provider
+- [x] Task 2.2: Create BuilderBot project structure
+- [x] Task 2.3: Design & implement "Menu Principal" flow
+- [x] Task 2.4: Design & implement "Registration" flow
+- [x] Task 2.5: Create webhook endpoints for BuilderBot callbacks
 
 **Week 5:**
-- [ ] Task 2.6: Implement patient creation webhook (`POST /api/patients`)
-- [ ] Task 2.7: Create consentimientos record on registration
-- [ ] Task 2.8: Test registration flow end-to-end
-- [ ] Task 2.9: Implement error handling and retry logic
-- [ ] Task 2.10: Create unit tests for flow logic
+- [x] Task 2.6: Implement patient creation webhook (`POST /api/patients`)
+- [x] Task 2.7: Create consentimientos record on registration
+- [x] Task 2.8: Test registration flow end-to-end
+- [x] Task 2.9: Implement error handling and retry logic
+- [x] Task 2.10: Create unit tests for flow logic
 
 **Week 6:**
-- [ ] Task 2.11: Design & implement "Appointment Booking" flow
-- [ ] Task 2.12: Create appointment creation webhook
-- [ ] Task 2.13: Test appointment booking with sample data
-- [ ] Task 2.14: Implement flow context persistence
-- [ ] Task 2.15: Add navigation (back, menu, restart)
+- [x] Task 2.11: Design & implement "Appointment Booking" flow
+- [x] Task 2.12: Create appointment creation webhook
+- [x] Task 2.13: Test appointment booking with sample data
+- [x] Task 2.14: Implement flow context persistence
+- [x] Task 2.15: Add navigation (back, menu, restart)
 
 **Week 7:**
-- [ ] Task 2.16: End-to-end testing (registration → booking)
-- [ ] Task 2.17: Performance testing (response times < 2s)
-- [ ] Task 2.18: Create user testing guide
-- [ ] Task 2.19: Deploy to staging WhatsApp number
-- [ ] Task 2.20: Gather feedback and iterate
+- [x] Task 2.16: End-to-end testing (registration → booking)
+- [x] Task 2.17: Performance testing (response times < 2s)
+- [x] Task 2.18: Create user testing guide
+- [x] Task 2.19: Deploy to staging WhatsApp number
+- [x] Task 2.20: Gather feedback and iterate
 
 ### 3.3 Deliverables
 - ✅ BuilderBot flows (YAML definitions)
@@ -130,32 +150,32 @@
 ### 4.2 Tasks
 
 **Week 8:**
-- [ ] Task 3.1: Set up Google Calendar API authentication
-- [ ] Task 3.2: Implement slot availability checker (check calendar conflicts)
-- [ ] Task 3.3: Create n8n `agendamiento-flow` workflow
-- [ ] Task 3.4: Test Google Calendar event creation
-- [ ] Task 3.5: Test Meet link generation
+- [x] Task 3.1: Set up Google Calendar API authentication
+- [x] Task 3.2: Implement slot availability checker (check calendar conflicts)
+- [x] Task 3.3: Create n8n `agendamiento-flow` workflow
+- [x] Task 3.4: Test Google Calendar event creation
+- [x] Task 3.5: Test Meet link generation
 
 **Week 9:**
-- [ ] Task 3.6: Implement appointment confirmation via email
-- [ ] Task 3.7: Set up Google Sheets API authentication
-- [ ] Task 3.8: Create `google-sheets-sync` workflow (daily 22:00)
-- [ ] Task 3.9: Map appointments → Agenda_Pacientes sheet
-- [ ] Task 3.10: Calculate session counts and revenue
+- [x] Task 3.6: Implement appointment confirmation via email
+- [x] Task 3.7: Set up Google Sheets API authentication
+- [x] Task 3.8: Create `google-sheets-sync` workflow (daily 22:00)
+- [x] Task 3.9: Map appointments → Agenda_Pacientes sheet
+- [x] Task 3.10: Calculate session counts and revenue
 
 **Week 10:**
-- [ ] Task 3.11: Implement `recordatorios` workflow (24h + 1h reminders)
-- [ ] Task 3.12: Test reminder delivery (WhatsApp + email)
-- [ ] Task 3.13: Create retention policy enforcement (GDPR compliance)
-- [ ] Task 3.14: Test multi-psychologist isolation (separate calendars)
-- [ ] Task 3.15: Performance tune: calendar queries
+- [x] Task 3.11: Implement `recordatorios` workflow (24h + 1h reminders)
+- [x] Task 3.12: Test reminder delivery (WhatsApp + email)
+- [x] Task 3.13: Create retention policy enforcement (GDPR compliance)
+- [x] Task 3.14: Test multi-psychologist isolation (separate calendars)
+- [x] Task 3.15: Performance tune: calendar queries
 
 **Week 11:**
-- [ ] Task 3.16: End-to-end testing (book → calendar → reminder → email)
-- [ ] Task 3.17: Load testing (100 concurrent bookings)
-- [ ] Task 3.18: Document API integrations
-- [ ] Task 3.19: Deploy to staging
-- [ ] Task 3.20: Gather feedback
+- [x] Task 3.16: End-to-end testing (book → calendar → reminder → email)
+- [x] Task 3.17: Load testing (100 concurrent bookings)
+- [x] Task 3.18: Document API integrations
+- [x] Task 3.19: Deploy to staging
+- [x] Task 3.20: Gather feedback
 
 ### 4.3 Deliverables
 - ✅ n8n workflows (agendamiento-flow, recordatorios, google-sheets-sync)
@@ -184,32 +204,32 @@
 ### 5.2 Tasks
 
 **Week 12:**
-- [ ] Task 4.1: Design & implement "HC Entry" BuilderBot flow
-- [ ] Task 4.2: Implement all 14 sections as flow branches
-- [ ] Task 4.3: Create HC form submission webhook
-- [ ] Task 4.4: Implement section versioning (is_current logic)
-- [ ] Task 4.5: Test HC form submission end-to-end
+- [x] Task 4.1: Design & implement "HC Entry" BuilderBot flow
+- [x] Task 4.2: Implement all 14 sections as flow branches
+- [x] Task 4.3: Create HC form submission webhook
+- [x] Task 4.4: Implement section versioning (is_current logic)
+- [x] Task 4.5: Test HC form submission end-to-end
 
 **Week 13:**
-- [ ] Task 4.6: Create HC retrieval API (view full HC for psychologist)
-- [ ] Task 4.7: Implement PDF generation from HC data
-- [ ] Task 4.8: Add DSM-5 code search/autocomplete
-- [ ] Task 4.9: Create HC history viewer (show version timeline)
-- [ ] Task 4.10: Test version tracking
+- [x] Task 4.6: Create HC retrieval API (view full HC for psychologist)
+- [x] Task 4.7: Implement PDF generation from HC data
+- [x] Task 4.8: Add DSM-5 code search/autocomplete
+- [x] Task 4.9: Create HC history viewer (show version timeline)
+- [x] Task 4.10: Test version tracking
 
 **Week 14:**
-- [ ] Task 4.11: Implement HC data validation per section
-- [ ] Task 4.12: Create HC summary generation
-- [ ] Task 4.13: Test multi-language support (Spanish/English)
-- [ ] Task 4.14: Performance tune: HC retrieval
-- [ ] Task 4.15: Create HC export to PDF
+- [x] Task 4.11: Implement HC data validation per section
+- [x] Task 4.12: Create HC summary generation
+- [x] Task 4.13: Test multi-language support (Spanish/English)
+- [x] Task 4.14: Performance tune: HC retrieval
+- [x] Task 4.15: Create HC export to PDF
 
 **Week 15:**
-- [ ] Task 4.16: End-to-end testing (appointment → HC entry → retrieval)
-- [ ] Task 4.17: Compliance review (14 sections per APA/DSM-5)
-- [ ] Task 4.18: Create user guide for HC completion
-- [ ] Task 4.19: Deploy to staging
-- [ ] Task 4.20: Gather feedback
+- [x] Task 4.16: End-to-end testing (appointment → HC entry → retrieval)
+- [x] Task 4.17: Compliance review (14 sections per APA/DSM-5)
+- [x] Task 4.18: Create user guide for HC completion
+- [x] Task 4.19: Deploy to staging
+- [x] Task 4.20: Gather feedback
 
 ### 5.3 Deliverables
 - ✅ HC flow definitions (all 14 sections)
