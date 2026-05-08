@@ -32,6 +32,15 @@ else
     exit 1
 fi
 
+# Verify backup integrity (structural check via TOC parse — no DB required)
+pg_restore --list "$BACKUP_FILE" > /dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "[$(date)] ERROR: Restore-verify failed for $BACKUP_FILE" >&2
+    exit 1
+fi
+echo "OK   $BACKUP_FILE   $(stat -c%s "$BACKUP_FILE")bytes   $(date)" >> "$(dirname "$0")/backup.log"
+echo "[$(date)] Backup verified: TOC parsed successfully"
+
 # Clean old backups
 echo "[$(date)] Cleaning backups older than $RETENTION_DAYS days..."
 find "$BACKUP_DIR" -name "*.dump" -mtime +$RETENTION_DAYS -delete
