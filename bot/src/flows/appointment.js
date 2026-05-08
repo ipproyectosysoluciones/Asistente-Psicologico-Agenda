@@ -1,4 +1,8 @@
 import { addAnswer, addKeyword } from '@builderbot/bot'
+
+if (!process.env.DEFAULT_PSYCHOLOGIST_ID) {
+    throw new Error('[appointment] DEFAULT_PSYCHOLOGIST_ID env var is required')
+}
 import {
     appointmentService,
     DURATIONS,

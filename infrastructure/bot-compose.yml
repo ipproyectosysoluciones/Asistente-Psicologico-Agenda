@@ -12,6 +12,7 @@ services:
       - ./bot/bot_sessions:/app/bot_sessions
     environment:
       - DATABASE_URL=${DATABASE_URL}
+      - DEFAULT_PSYCHOLOGIST_ID=${DEFAULT_PSYCHOLOGIST_ID}
       - WA_PHONE_NUMBER=${WA_PHONE_NUMBER}
       - HEALTH_PORT=3001
       - PORT=3000
