@@ -45,7 +45,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./infrastructure
-          dockerfile: ./infrastructure/Dockerfile.migrate
+          file: ./infrastructure/Dockerfile.migrate
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-migrate:latest
           cache-from: type=gha
