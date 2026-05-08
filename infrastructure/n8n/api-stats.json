@@ -33,16 +33,33 @@
     },
     {
       "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT TO_CHAR(DATE_TRUNC('week', scheduled_at), 'YYYY-MM-DD') AS week, COUNT(*)::integer AS count FROM appointments WHERE scheduled_at >= NOW() - INTERVAL '8 weeks' AND deleted_at IS NULL GROUP BY 1 ORDER BY 1",
+        "options": {}
+      },
+      "id": "pg-weekly", "name": "PG - Weekly Stats", "type": "n8n-nodes-base.postgres", "typeVersion": 2.4, "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const stats = $('PostgreSQL').first().json;\nconst weekly = $('PG - Weekly Stats').all().map(i => ({ week: i.json.week, count: i.json.count }));\nreturn [{ json: { ...stats, weekly_appointments: weekly } }];",
+        "options": {}
+      },
+      "id": "code-merge", "name": "Code - Merge Stats", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1250, 220]
+    },
+    {
+      "parameters": {
         "options": { "responseCode": 200, "responseData": "={{ JSON.stringify($json) }}" }
       },
-      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1250, 150]
+      "id": "respond", "name": "Respond", "type": "n8n-nodes-base.respondToWebhook", "typeVersion": 1, "position": [1500, 220]
     }
   ],
   "connections": {
-    "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main" }]] },
-    "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main" }]] },
-    "IF - JWT válido": { "main": [[{ "node": "PostgreSQL", "type": "main" }], [{ "node": "Respond 401", "type": "main" }]] },
-    "PostgreSQL": { "main": [[{ "node": "Respond", "type": "main" }]] }
+    "Webhook": { "main": [[{ "node": "Code - JWT Verify", "type": "main", "index": 0 }]] },
+    "Code - JWT Verify": { "main": [[{ "node": "IF - JWT válido", "type": "main", "index": 0 }]] },
+    "IF - JWT válido": { "main": [[{ "node": "PostgreSQL", "type": "main", "index": 0 }, { "node": "PG - Weekly Stats", "type": "main", "index": 0 }], [{ "node": "Respond 401", "type": "main", "index": 0 }]] },
+    "PostgreSQL": { "main": [[{ "node": "Code - Merge Stats", "type": "main", "index": 0 }]] },
+    "PG - Weekly Stats": { "main": [[{ "node": "Code - Merge Stats", "type": "main", "index": 1 }]] },
+    "Code - Merge Stats": { "main": [[{ "node": "Respond", "type": "main", "index": 0 }]] }
   },
   "active": true, "settings": {}, "id": "api-stats"
 }
