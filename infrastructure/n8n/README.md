@@ -1,77 +1,65 @@
-# n8n Workflows - Asistente Psicológico
+# n8n Workflows — Asistente Psicológico
 
-## Importar a n8n
+## Acceso
 
-Para importar los workflows:
-1. Ir a http://localhost:5678
-2. Login con: admin / admin123
-3. Ir a **Workflows** → **Import from File**
+- **Local**: http://localhost:5678 — login: `N8N_AUTH_USER` / `N8N_AUTH_PASS`
+- **Producción**: expuesto vía nginx proxy en `/api/` (Railway)
 
-## Workflows Disponibles
+## Importar workflows
 
-### 1. WhatsApp New Patient (whatsapp-new-patient.json)
-Recibe pacientes nuevos desde WhatsApp y los registra en PostgreSQL.
+1. Ir a **Workflows** → **Import from File**
+2. Seleccionar el archivo `.json` de esta carpeta
+3. Configurar credenciales de PostgreSQL en los nodos que las requieran
 
-**Trigger**: Webhook  
-**URL**: `http://localhost:5678/webhook/whatsapp-new-patient`
+---
 
-**Nodos**:
-- Webhook (entrada)
-- PostgreSQL - Insert patient
-- Slack/Email - Notificación
+## API REST (activos en producción)
 
-### 2. Agendamiento (agendamiento-flow.json)
-Gestion de citas: verificar disponibilidad, crear evento en Google Calendar.
+| Archivo | Endpoint | Método | Descripción |
+|---------|----------|--------|-------------|
+| `api-appointments.json` | `/api/appointments` | GET | Listado paginado con filtro de status |
+| `api-create-appointment.json` | `/api/appointments` | POST | Crear cita |
+| `api-patients.json` | `/api/patients` | GET | Listado paginado de pacientes |
+| `api-create-patient.json` | `/api/patients` | POST | Crear paciente |
+| `api-patient-detail.json` | `/api/patients/:id` | GET | Detalle de paciente |
+| `api-patient-consent.json` | `/api/patients/:id/consent` | POST | Registrar consentimiento |
+| `api-stats.json` | `/api/stats` | GET | Estadísticas del dashboard |
+| `api-leads.json` | `/api/leads` | GET/POST | Leads |
+| `api-hc-*.json` | `/api/patients/:id/hc/*` | GET/POST | Secciones de Historia Clínica |
 
-**Trigger**: Webhook  
-**Nodos**:
-- Webhook
-- PostgreSQL - Get availability
-- Google Calendar - Check events
-- PostgreSQL - Create appointment
-- Google Calendar - Create event
-- Slack - Confirmación
+Todos los endpoints REST requieren JWT Bearer token (`JWT_SECRET` en variables de entorno de n8n).
 
-### 3. Recordatorios (recordatorios.json)
-Envía recordatorios automáticos 24h y 1h antes de cada cita.
+---
 
-**Trigger**: Schedule (cada hora)  
-**Nodos**:
-- Schedule (Every hour)
-- PostgreSQL - Get appointments tomorrow
-- Switch (24h / 1h)
-- Email - Send reminder
-- WhatsApp via n8n - Send message
+## Workflows automáticos
 
-### 4. Google Sheets Sync (google-sheets-sync.json)
-Sincroniza datos de PostgreSQL a Google Sheets para reporting.
+| Archivo | Trigger | Descripción |
+|---------|---------|-------------|
+| `recordatorios.json` | Schedule (cada hora) | Recordatorios 24h y 1h antes de cita |
+| `no-show.json` | Schedule (diario) | Marca inasistencias automáticamente |
+| `confirmacion.json` | Webhook email | Confirmación/cancelación por email |
+| `google-sheets-sync.json` | Schedule (diario 6am) | Sync citas → Google Sheets |
 
-**Trigger**: Schedule (diario)  
-**Nodos**:
-- Schedule (Daily at 6am)
-- PostgreSQL - Get all appointments
-- Google Sheets - Append row
-- PostgreSQL - Mark as synced
+---
 
-## Variables de Entorno
+## Variables de entorno de n8n
 
-Configurar en n8n:
+Configurar en Railway o `.env` local:
+
 ```
-DB_HOST=asistente-psicologico-db
-DB_PORT=5432
-DB_NAME=asistente_psicologico
-DB_USER=admin
-DB_PASSWORD=changeme123
-
-GOOGLE_CLIENT_ID=...
-GOOGLE_CLIENT_SECRET=...
-GOOGLE_REDIRECT_URI=...
-
-SLACK_WEBHOOK_URL=...
+DATABASE_URL=postgresql://user:pass@host:5432/db
+JWT_SECRET=<secreto compartido con el bot>
+N8N_AUTH_USER=admin
+N8N_AUTH_PASS=<password seguro>
+GOOGLE_SHEET_ID=<id de la hoja>
+NOTIFICATION_EMAIL=<email de notificaciones>
 ```
 
-## Webhook Externo para WhatsApp
+---
 
-Para conectar con BuilderBot:
-- Webhook URL exponer con ngrok o配置的 proxy
-- El bot envía mensajes a n8n vía HTTP POST
+## Notas
+
+- El proxy nginx traduce `/api/` → `http://n8n-interno:5678/webhook/`
+- Los workflows deben activarse manualmente después de importar (`active: true`)
+- La columna de psicólogo es `full_name` (no `first_name`)
+- La columna de fecha de cita es `scheduled_at` (no `start_time`)

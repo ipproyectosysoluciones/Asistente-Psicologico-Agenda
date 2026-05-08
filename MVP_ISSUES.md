@@ -1,8 +1,10 @@
 # MVP Issues — Análisis de Bugs y Problemas
 
 **Generado**: 2026-04-23  
+**Última actualización**: 2026-05-08  
 **Branch de análisis**: `claude/analyze-mvp-issues-MvbwU`  
-**Total de issues**: 46 (12 críticos · 10 altos · 14 medios · 10 bajos)
+**Total de issues**: 46 (12 críticos · 10 altos · 14 medios · 10 bajos)  
+**Resueltos**: ✅ C-07, C-10, C-12, H-05, H-06, M-02, M-04, M-05, M-08, M-14, L-08, L-10
 
 ---
 
@@ -126,18 +128,10 @@ Toda creación de citas falla con error SQL. Usar `={{ $json.body.patient_id }}`
 
 ---
 
-### C-07 · n8n: `$filters` es una variable indefinida en api-appointments
+### ✅ C-07 · n8n: `$filters` era variable indefinida en api-appointments — RESUELTO
 
-**Archivo**: `infrastructure/n8n/api-appointments.json` línea ~20  
-**Rama sugerida**: `feature/fix-n8n-postgres-params`
-
-```sql
--- PROBLEMA: $filters no existe en n8n
-AND ($filters.status IS NULL OR a.status = $filters.status)
-```
-
-El listado de citas del dashboard falla en runtime.  
-**Solución**: Usar `{{ $json.query.status }}`.
+**Resuelto en**: PR #94 / commit `0c16de4`  
+Reemplazado por paginación paramétrica (`$1`/`$2`/`$3`) con soporte de status como lista separada por comas via `ANY(string_to_array($3, ','))`.
 
 ---
 
@@ -169,17 +163,10 @@ El sistema de confirmación/cancelación por email es completamente no funcional
 
 ---
 
-### C-10 · n8n: UUID sin comillas en no-show.json — error SQL garantizado
+### ✅ C-10 · n8n: UUID sin comillas en no-show.json — RESUELTO
 
-**Archivo**: `infrastructure/n8n/no-show.json` línea 36  
-**Rama sugerida**: `feature/fix-n8n-noshow`
-
-```sql
--- PROBLEMA: UUID sin comillas → error de sintaxis SQL
-WHERE id = {{ $json.id }}
--- CORRECTO:
-WHERE id = '{{ $json.id }}'
-```
+**Resuelto en**: commit `dcb4710`  
+Además se corrigió la columna `start_time` → `scheduled_at` y el filtro de status `pending` → `scheduled`.
 
 ---
 
@@ -198,13 +185,10 @@ Toda creación de pacientes desde el dashboard falla con violación de constrain
 
 ---
 
-### C-12 · Dashboard: Nginx en producción no tiene proxy para `/api`
+### ✅ C-12 · Dashboard: Nginx sin proxy para `/api` — RESUELTO
 
-**Archivo**: `dashboard/Dockerfile` líneas 22-42  
-**Rama sugerida**: `feature/fix-dashboard-nginx-proxy`
-
-El config de nginx solo sirve archivos estáticos. No hay `location /api { proxy_pass http://n8n:5678; }`.  
-En producción, todas las llamadas API retornan 404. El proxy de Vite solo funciona en desarrollo.
+**Resuelto en**: sprint-5 / commit `112c1a7`  
+`nginx.conf.template` tiene `location /api/` → `proxy_pass http://${N8N_INTERNAL_URL}/webhook/`. La URL interna se inyecta vía variable de entorno en Railway.
 
 ---
 
@@ -246,25 +230,17 @@ Dos flujos registran el mismo keyword. Comportamiento indefinido (generalmente g
 
 ---
 
-### H-05 · Credenciales hardcodeadas `admin:admin` en servicios del bot
+### ✅ H-05 · Credenciales hardcodeadas en servicios del bot — RESUELTO
 
-**Archivos**: `bot/src/services/appointmentService.js` línea 6 · `bot/src/services/knowledgeBase.js` línea 6  
-**Rama sugerida**: `feature/fix-env-config`
-
-```js
-connectionString: process.env.DATABASE_URL || 'postgresql://admin:admin@localhost:5432/...'
-```
-
-Si `DATABASE_URL` no está definido, el bot se conecta con credenciales triviales. `.env.example` define variables individuales (`DB_HOST`, etc.) pero el código espera `DATABASE_URL`.
+**Resuelto en**: PR #94  
+Pool requiere `DATABASE_URL` obligatoriamente (lanza error si no está definido). Eliminado el fallback con credenciales triviales. PG Pool configurado con SSL, `max: 5`, timeouts.
 
 ---
 
-### H-06 · `DEFAULT_PSYCHOLOGIST_ID` no está en `.env.example`
+### ✅ H-06 · `DEFAULT_PSYCHOLOGIST_ID` faltaba en `.env.example` — RESUELTO
 
-**Archivo**: `bot/.env.example`  
-**Rama sugerida**: `feature/fix-env-config`
-
-El bot usa `process.env.DEFAULT_PSYCHOLOGIST_ID` en 3 lugares de `appointment.js` (líneas 65, 110, 191). Si no está definido, `psychologistId` es `undefined` → todas las queries fallan.
+**Resuelto en**: PR #94  
+`bot/.env.example` incluye `DEFAULT_PSYCHOLOGIST_ID`, `JWT_SECRET`, `WA_CREDS_B64`, `WA_FORCE_RESET`, `HOST`. También agregado a `docker-compose.production.yml`.
 
 ---
 
@@ -326,14 +302,10 @@ WHERE id IN ({{ $json.map(x => `'${x.id}'`).join(',') }})
 
 ---
 
-### M-02 · Credenciales hardcodeadas en `AuthContext.tsx`
+### ✅ M-02 · Credenciales hardcodeadas en `AuthContext.tsx` — RESUELTO
 
-**Archivo**: `dashboard/src/contexts/AuthContext.tsx` líneas 11-12  
-```ts
-const AUTH_USER = 'admin'
-const AUTH_PASS = 'password'
-```
-Las variables de entorno `VITE_AUTH_USER`/`VITE_AUTH_PASS` de `docker-compose.production.yml` nunca se leen.
+**Resuelto en**: PR #94  
+`AuthContext.tsx` lee `import.meta.env.VITE_AUTH_USER` / `VITE_AUTH_PASS`. El Dockerfile los recibe como `ARG` y los expone como `ENV` en build-time.
 
 ---
 
@@ -346,22 +318,17 @@ console.log('Attempt login:', user, pass)  // expone la contraseña
 
 ---
 
-### M-04 · `ps.first_name` no existe — la columna es `full_name`
+### ✅ M-04 · `ps.first_name` no existía — RESUELTO
 
-**Archivo**: `infrastructure/n8n/api-appointments.json` línea ~20  
-```sql
-ps.first_name AS psychologist_name  -- columna no existe
-```
-Schema `init-db.sql` línea 17 define `full_name VARCHAR(255)`.
+**Resuelto en**: commit `0c16de4`  
+Query usa `ps.full_name AS psychologist_name`.
 
 ---
 
-### M-05 · `ps.time_zone` no existe — la columna es `timezone`
+### ✅ M-05 · `ps.time_zone` no existía — RESUELTO
 
-**Archivos**: `n8n/api-appointments.json`, `n8n/recordatorios.json`  
-```sql
-COALESCE(ps.time_zone, 'America/Mexico_City')  -- debe ser ps.timezone
-```
+**Resuelto en**: commit `0c16de4`  
+Query usa `COALESCE(ps.timezone, 'America/Mexico_City')`.
 
 ---
 
@@ -382,14 +349,10 @@ PostgreSQL almacena como `prognosis` (minúscula) a menos que se use entre comil
 
 ---
 
-### M-08 · Paths de `COPY` incorrectos en bot/Dockerfile
+### ✅ M-08 · Paths de `COPY` incorrectos en bot/Dockerfile — RESUELTO
 
-**Archivo**: `bot/Dockerfile` líneas 18 y 21  
-```dockerfile
-COPY bot/package.json bot/pnpm-lock.yaml ./  -- incorrecto con context: ../bot
-COPY bot/ ./                                   -- incorrecto
-```
-Con `context: ../bot`, el contexto ya ES el directorio `bot/`. Debe ser `COPY package.json pnpm-lock.yaml ./`.
+**Resuelto en**: sprint-5  
+`bot/Dockerfile` usa `COPY package.json pnpm-lock.yaml ./` y `COPY . ./` correctamente.
 
 ---
 
@@ -431,10 +394,10 @@ La condición IF nunca es `true` → la sincronización con Google Sheets nunca 
 
 ---
 
-### M-14 · `.env.example` define vars individuales de DB pero el código lee `DATABASE_URL`
+### ✅ M-14 · `.env.example` no tenía `DATABASE_URL` — RESUELTO
 
-**Archivo**: `bot/.env.example`  
-El developer que siga `.env.example` tendrá un bot no funcional porque el código solo lee `DATABASE_URL`.
+**Resuelto en**: PR #94  
+`bot/.env.example` define `DATABASE_URL` como variable principal.
 
 ---
 
@@ -488,10 +451,10 @@ Artefacto de copy-paste. Se renderiza como texto corrupto en el email del pacien
 
 ---
 
-### L-08 · Nombres de secrets de Docker Hub inconsistentes entre workflows CI
+### ✅ L-08 · Nombres de secrets inconsistentes en CI — RESUELTO
 
-**Archivos**: `.github/workflows/bot-ci.yml` (`DOCKER_HUB_USERNAME`) vs `docker-push.yml` (`DOCKERHUB_USERNAME`)  
-Un workflow fallará en autenticación con Docker Hub.
+**Resuelto en**: `.github/workflows/docker-push.yml`  
+Ambos workflows usan `DOCKER_HUB_USERNAME` / `DOCKER_HUB_TOKEN` de forma consistente.
 
 ---
 
@@ -502,14 +465,10 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 
 ---
 
-### L-10 · Domingo incluido en horario pero el mensaje dice "no atendemos los lunes"
+### ✅ L-10 · `DAYS` incluía domingo y el mensaje de error era incorrecto — RESUELTO
 
-**Archivo**: `bot/src/services/appointmentService.js` líneas 23 y 166  
-```js
-export const DAYS = [1, 2, 3, 4, 5, 6, 0]  // 0 = domingo habilitado, 1 = lunes excluido
-// Mensaje de error incorrecto:
-return { valid: false, error: 'No atendemos los días lunes.' }
-```
+**Resuelto en**: PR #94  
+`DAYS = [...WORKING_WEEKDAYS]` = lunes a viernes (Set [1,2,3,4,5]). Mensaje de error pendiente de actualizar (P4).
 
 ---
 

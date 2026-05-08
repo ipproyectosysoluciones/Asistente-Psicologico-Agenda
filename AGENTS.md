@@ -2,9 +2,10 @@
 
 ## Stack Principal
 
-- **Backend**: Node.js, PostgreSQL, n8n
-- **Bot**: BuilderBot + WPPConnect
+- **Backend**: Node.js 22+, PostgreSQL, n8n
+- **Bot**: BuilderBot + Baileys (WhatsApp)
 - **Frontend**: React + Vite + Tailwind CSS 4 + shadcn/ui
+- **Deploy**: Railway (Docker containers) — bot, dashboard (nginx), n8n, PostgreSQL
 
 ## Ramas
 
@@ -68,8 +69,10 @@ cd dashboard && pnpm build  # Production build
 
 ## Notas Importantes
 
-- El bot de WhatsApp tiene problemas de conexión desde redes restringidas (necesita VPS)
-- Credenciales dashboard: admin / password (cambiar en producción)
+- El bot usa Baileys (no WPPConnect). Credenciales WA se restauran desde `WA_CREDS_B64` (base64 de la carpeta de sesión).
+- Credenciales dashboard: configurar `VITE_AUTH_USER` / `VITE_AUTH_PASS` como build ARGs en Railway.
+- `VITE_API_URL=/api` en producción (nginx proxea `/api` → n8n interno). Para desarrollo local: `http://localhost:5678/webhook`.
+- Días hábiles del bot: lunes a viernes, 09:00–18:00, sin 12:00–13:00.
 
 ## Documentación
 

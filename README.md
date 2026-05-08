@@ -10,9 +10,9 @@ A comprehensive system for managing psychological appointments with AI-powered W
 
 ## 📋 Project Status / Estado del Proyecto
 
-**Status**: ✅ In Development  
+**Status**: 🚀 In Production (MVP)  
 **Version**: 1.0.0  
-**Last Updated**: 2026-04-22
+**Last Updated**: 2026-05-08
 
 ---
 
@@ -20,7 +20,7 @@ A comprehensive system for managing psychological appointments with AI-powered W
 
 ```
 Asistente-Psicologico-Agenda/
-├── bot/                    # WhatsApp Bot (BuilderBot + WPPConnect)
+├── bot/                    # WhatsApp Bot (BuilderBot + Baileys)
 │   ├── src/
 │   │   ├── index.js       # Bot entry point
 │   │   ├── flows/        # Conversation flows
@@ -50,8 +50,8 @@ Asistente-Psicologico-Agenda/
 
 ### Prerequisites / Requisitos Previos
 
-- Node.js 18+
-- pnpm
+- Node.js 22+
+- pnpm 10+
 - Docker Desktop
 - PostgreSQL (optional if using Docker)
 
@@ -109,7 +109,7 @@ cd dashboard && pnpm dev
 
 ### Schedule / Horario
 
-- Tuesday to Sunday / Martes a Domingo
+- Monday to Friday / Lunes a Viernes
 - 09:00 - 18:00
 - Lunch / Almuerzo: 12:00 - 13:00
 
@@ -250,7 +250,7 @@ DEFAULT_PSYCHOLOGIST_ID=<uuid>
 ### Dashboard
 
 ```env
-VITE_API_URL=http://localhost:5678
+VITE_API_URL=/api        # production (nginx proxy); use http://localhost:5678/webhook for local dev
 VITE_AUTH_USER=admin
 VITE_AUTH_PASS=password
 ```
