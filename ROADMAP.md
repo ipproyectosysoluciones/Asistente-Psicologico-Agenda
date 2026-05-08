@@ -86,6 +86,15 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Sprint 8a — Admin Dashboard + AdminGuard + Compliance Page (2026-05-08) — [PR #108](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/108) — v1.9.0
+- [x] **REQ-AUTH-03** · `AuthContext.tsx` — decode JWT client-side, expone `jwtRole: 'admin' | 'psychologist' | null` + `jwtPsychologistId: string | null` ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] **REQ-ADMIN-01** · `AdminGuard.tsx` — gate fail-closed, redirige a `/dashboard` si role ≠ admin ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] **REQ-ADMIN-02** · `PsychologistsPage.tsx` — CRUD admin: listar, crear, editar, desactivar con shadcn/ui + TanStack Query ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] **REQ-ADMIN-03** · `CompliancePage.tsx` — checklist estático LFPDPPP/Ley1581/RGPD/HIPAA con estado honesto ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] **REQ-DB-01** · `init-db.sql` — columna `role VARCHAR(20) NOT NULL DEFAULT 'psychologist'` en psychologists DDL ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] **REQ-BACKEND-01** · `api-psychologists.json` — GET incluye `COALESCE(full_name, email) AS full_name` ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
+- [x] Vitest setup: 11 tests pasando (AuthContext + AdminGuard + PsychologistsPage)
+
 ### Sprint 7b — RBAC + Audit + GDPR + Backup + Monitoring (2026-05-08) — [PR #104](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/104) [PR #105](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/105) [PR #106](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/106) — v1.8.0
 - [x] **REQ-PSYCH-01** · `api-psychologists.json` — CRUD admin-only (soft-delete, last-admin guard, 409 en email duplicado)
 - [x] **REQ-AUDIT-01** · Migración 009 — `audit_log` + triggers AFTER INSERT/UPDATE/DELETE en `patients` y `appointments`
