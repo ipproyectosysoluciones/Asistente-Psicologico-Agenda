@@ -1,36 +1,75 @@
-server {
-    listen 80;
-    server_name localhost;
-    root /usr/share/nginx/html;
-    index index.html;
+worker_processes auto;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout 65;
 
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
     gzip_min_length 1000;
 
-    location = /health {
-        return 200 "ok\n";
-        add_header Content-Type text/plain;
-        access_log off;
-    }
+    # Rate limiting zones
+    # General API traffic: 10 req/s per IP, burst 20
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    # Auth endpoint: 5 req/min per IP (≈1 req/12s), burst 5 — throttles credential stuffing
+    limit_req_zone $binary_remote_addr zone=auth:10m rate=5r/m;
 
-    location /api/ {
-        rewrite ^/api/(.*) /webhook/$1 break;
-        proxy_pass ${N8N_INTERNAL_URL};
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 60s;
-    }
+    server {
+        listen 80;
+        server_name localhost;
+        root /usr/share/nginx/html;
+        index index.html;
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+        location = /health {
+            return 200 "ok\n";
+            add_header Content-Type text/plain;
+            access_log off;
+        }
 
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
+        # Auth route — more specific, must come BEFORE /api/ block.
+        # Aggressive rate limit to block brute-force login attempts.
+        location /api/auth/ {
+            limit_req        zone=auth burst=5 nodelay;
+            limit_req_status 429;
+
+            rewrite ^/api/(.*) /webhook/$1 break;
+            proxy_pass         ${N8N_INTERNAL_URL};
+            proxy_http_version 1.1;
+            proxy_set_header   Host              $host;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto $scheme;
+            proxy_read_timeout 60s;
+        }
+
+        # General API traffic — looser limit for normal dashboard use.
+        location /api/ {
+            limit_req        zone=api burst=20 nodelay;
+            limit_req_status 429;
+
+            rewrite ^/api/(.*) /webhook/$1 break;
+            proxy_pass         ${N8N_INTERNAL_URL};
+            proxy_http_version 1.1;
+            proxy_set_header   Host              $host;
+            proxy_set_header   X-Real-IP         $remote_addr;
+            proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto $scheme;
+            proxy_read_timeout 60s;
+        }
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
     }
 }
