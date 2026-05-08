@@ -1,67 +1,76 @@
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
   const { login } = useAuth()
   const [user, setUser] = useState('')
   const [pass, setPass] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     e.stopPropagation()
-    const result = await login(user, pass)
-    if (result.success) {
-      window.location.href = '/dashboard'
-    } else {
-      setError(result.error ?? 'Credenciales incorrectas')
+    setSubmitting(true)
+    try {
+      const result = await login(user, pass)
+      if (result.success) {
+        window.location.href = '/dashboard'
+      } else {
+        setError(result.error ?? 'Credenciales incorrectas')
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: 300, padding: 24, borderRadius: 8, background: 'white', border: '1px solid #e2e8f0' }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 36 }}>🧠</div>
-          <h1 style={{ fontSize: 20, fontWeight: 'bold', marginTop: 8 }}>Panel de Control</h1>
-          <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Ingresá tus credenciales</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader className="text-center">
+          <CardTitle>Panel de Control</CardTitle>
+          <CardDescription>Ingresá tus credenciales</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="user">Usuario</Label>
+              <Input
+                id="user"
+                type="text"
+                value={user}
+                onChange={e => { setUser(e.target.value); setError(null) }}
+                placeholder="admin"
+                autoComplete="username"
+              />
+            </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Usuario</label>
-          <input
-            type="text"
-            value={user}
-            onChange={e => { setUser(e.target.value); setError(null) }}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
-            placeholder="admin"
-          />
-        </div>
+            <div className="space-y-2">
+              <Label htmlFor="pass">Contraseña</Label>
+              <Input
+                id="pass"
+                type="password"
+                value={pass}
+                onChange={e => { setPass(e.target.value); setError(null) }}
+                placeholder="••••••••"
+                autoComplete="current-password"
+              />
+            </div>
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6 }}>Contraseña</label>
-          <input
-            type="password"
-            value={pass}
-            onChange={e => { setPass(e.target.value); setError(null) }}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
-            placeholder="••••••••"
-          />
-        </div>
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Iniciando sesión...' : 'Ingresar'}
+            </Button>
 
-        {error !== null && (
-          <p style={{ fontSize: 13, color: '#ef4444', textAlign: 'center', marginBottom: 16 }}>
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          style={{ width: '100%', padding: '10px 16px', backgroundColor: '#6366f1', color: 'white', borderRadius: 6, border: 'none', fontSize: 14, fontWeight: 500, cursor: 'pointer' }}
-        >
-          Ingresar
-        </button>
-      </form>
+            {error !== null && (
+              <p className="text-destructive text-sm text-center mt-2">{error}</p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
