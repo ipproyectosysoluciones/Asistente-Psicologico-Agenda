@@ -74,6 +74,18 @@
 
 ---
 
+## 🚧 En Progreso
+
+### Sprint 6a — JWT Auth Fix + n8n Workflow Bug Fixes (branch: `feature/sprint-6a-auth-fix`)
+- [ ] **REQ-AUTH-01** · Eliminar `VITE_JWT_SECRET` del bundle del dashboard ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [ ] **REQ-AUTH-02** · Login endpoint en n8n (`POST /webhook/auth/login`) ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [ ] **REQ-AUTH-03** · Migrar `AuthContext.tsx` para llamar al endpoint del servidor ([#95](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/95))
+- [ ] **REQ-N8N-01** · Fix título de evento Google Calendar con nombre de paciente ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+- [ ] **REQ-N8N-02** · Guard null en `confirmacion.json` → HTTP 404 en lugar de 500 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+- [ ] **REQ-N8N-03** · Guard `DEFAULT_PSYCHOLOGIST_ID` en `api-create-patient.json` → HTTP 400 ([#96](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/96))
+
+---
+
 ## 🔴 Pendientes Críticos
 
 ### n8n — Workflows con bugs estructurales

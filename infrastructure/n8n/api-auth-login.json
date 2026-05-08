@@ -1,5 +1,7 @@
 {
+  "id": "api-auth-login",
   "name": "API - Auth Login",
+  "active": true,
   "nodes": [
     {
       "parameters": {
@@ -8,8 +10,8 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook",
-      "name": "POST /auth/login",
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Webhook - Login",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [250, 300],
@@ -17,11 +19,11 @@
     },
     {
       "parameters": {
-        "jsCode": "const { username, password } = $input.item.json.body || {};\nconst { timingSafeEqual, createHmac } = require('crypto');\n\nfunction safeEqual(a, b) {\n  const aBuf = Buffer.from(String(a || ''));\n  const bBuf = Buffer.from(String(b || ''));\n  if (aBuf.length !== bBuf.length) return false;\n  return timingSafeEqual(aBuf, bBuf);\n}\n\nconst validUser = safeEqual(username, $env.N8N_AUTH_USER);\nconst validPass = safeEqual(password, $env.N8N_AUTH_PASS);\n\nif (!validUser || !validPass) {\n  $input.item.json.authValid = false;\n  return $input.item;\n}\n\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');\nconst payload = Buffer.from(JSON.stringify({ sub: username, iat: now, exp: now + 28800 })).toString('base64url');\nconst sig = createHmac('sha256', secret).update(`${header}.${payload}`).digest('base64url');\n\n$input.item.json.authValid = true;\n$input.item.json.token = `${header}.${payload}.${sig}`;\n$input.item.json.expiresIn = 28800;\nreturn $input.item;",
+        "jsCode": "const { createHmac } = require('crypto');\nconst body = $input.item.json.body || {};\nconst u = body.username;\nconst p = body.password;\n\nif (!u || !p) {\n  return [{ json: { _status: 400, error: 'missing_credentials' } }];\n}\n\nif (u !== $env.N8N_AUTH_USER || p !== $env.N8N_AUTH_PASS) {\n  return [{ json: { _status: 401, error: 'invalid_credentials' } }];\n}\n\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst exp = now + 28800;\n\nconst b64url = (obj) =>\n  Buffer.from(JSON.stringify(obj)).toString('base64url');\n\nconst header = b64url({ alg: 'HS256', typ: 'JWT' });\nconst payload = b64url({ sub: u, role: 'psychologist', iat: now, exp });\nconst sig = createHmac('sha256', secret)\n  .update(`${header}.${payload}`)\n  .digest('base64url');\n\nconst token = `${header}.${payload}.${sig}`;\n\nreturn [{ json: { _status: 200, token, expiresAt: exp } }];",
         "options": {}
       },
-      "id": "validate-creds",
-      "name": "Code - Validate Credentials",
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Code - Validate & Sign",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [500, 300]
@@ -29,61 +31,112 @@
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
             {
-              "value1": "={{ $json.authValid }}",
-              "operation": "equal",
-              "value2": true
+              "id": "cond-status-200",
+              "leftValue": "={{ $json._status }}",
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              },
+              "rightValue": 200
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "if-valid",
-      "name": "IF - Valid",
+      "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+      "name": "IF - Success",
       "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
+      "typeVersion": 2,
       "position": [750, 300]
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ { token: $json.token, expiresIn: $json.expiresIn } }}",
         "options": {
-          "responseCode": 200
+          "responseCode": 200,
+          "responseData": "={{ JSON.stringify({ token: $json.token, expiresAt: $json.expiresAt }) }}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
         }
       },
-      "id": "respond-ok",
-      "name": "Respond 200",
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "Respond - 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [1000, 150]
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "{\"error\":\"Invalid credentials\"}",
         "options": {
-          "responseCode": 401
+          "responseCode": "={{ $json._status }}",
+          "responseData": "={{ JSON.stringify({ error: $json.error }) }}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
         }
       },
-      "id": "respond-401",
-      "name": "Respond 401",
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "Respond - Error",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [1000, 450]
     }
   ],
   "connections": {
-    "POST /auth/login": { "main": [[{ "node": "Code - Validate Credentials", "type": "main", "index": 0 }]] },
-    "Code - Validate Credentials": { "main": [[{ "node": "IF - Valid", "type": "main", "index": 0 }]] },
-    "IF - Valid": {
+    "Webhook - Login": {
       "main": [
-        [{ "node": "Respond 200", "type": "main", "index": 0 }],
-        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Code - Validate & Sign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validate & Sign": {
+      "main": [
+        [
+          {
+            "node": "IF - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Success": {
+      "main": [
+        [
+          {
+            "node": "Respond - 200",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
-  "active": true,
-  "settings": {},
-  "id": "api-auth-login"
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

@@ -1,57 +1,97 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from 'react'
+import api from '@/lib/api'
 
-async function signJWT(userId: string, secret: string): Promise<string> {
-  const enc = new TextEncoder()
-  const toB64url = (buf: ArrayBuffer) =>
-    btoa(String.fromCharCode(...new Uint8Array(buf)))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  const now = Math.floor(Date.now() / 1000)
-  const payload = btoa(JSON.stringify({ sub: userId, iat: now, exp: now + 28800 }))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  const input = `${header}.${payload}`
-  const key = await crypto.subtle.importKey(
-    'raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
-  )
-  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(input))
-  return `${input}.${toB64url(sig)}`
+interface LoginResponse {
+  token: string
+  expiresAt: number
+}
+
+interface LoginResult {
+  success: boolean
+  error?: string
 }
 
 interface AuthState {
   isAuthenticated: boolean
   token: string | null
-  login: (user: string, pass: string) => Promise<boolean>
+  login: (username: string, password: string) => Promise<LoginResult>
   logout: () => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
 
 const TOKEN_KEY = 'auth_token'
+const INACTIVITY_MS = 60 * 60 * 1000
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(TOKEN_KEY))
-
-  const login = useCallback(async (user: string, pass: string): Promise<boolean> => {
-    const expectedUser = import.meta.env.VITE_AUTH_USER
-    const expectedPass = import.meta.env.VITE_AUTH_PASS
-    if (!expectedUser || !expectedPass) return false
-    if (user !== expectedUser || pass !== expectedPass) return false
-    const jwtSecret = import.meta.env.VITE_JWT_SECRET
-    if (!jwtSecret) return false
-    const token = await signJWT(user, jwtSecret)
-    sessionStorage.setItem(TOKEN_KEY, token)
-    setToken(token)
-    return true
-  }, [])
+  const [token, setToken] = useState<string | null>(() =>
+    sessionStorage.getItem(TOKEN_KEY)
+  )
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const logout = useCallback(() => {
     sessionStorage.removeItem(TOKEN_KEY)
     setToken(null)
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
   }, [])
 
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => logout(), INACTIVITY_MS)
+  }, [logout])
+
+  useEffect(() => {
+    if (!token) return
+    resetTimer()
+    window.addEventListener('mousemove', resetTimer)
+    window.addEventListener('keydown', resetTimer)
+    window.addEventListener('click', resetTimer)
+    window.addEventListener('scroll', resetTimer)
+    return () => {
+      window.removeEventListener('mousemove', resetTimer)
+      window.removeEventListener('keydown', resetTimer)
+      window.removeEventListener('click', resetTimer)
+      window.removeEventListener('scroll', resetTimer)
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [token, resetTimer])
+
+  const login = useCallback(
+    async (username: string, password: string): Promise<LoginResult> => {
+      try {
+        const res = await api.post<unknown, LoginResponse>('/auth/login', {
+          username,
+          password,
+        })
+        sessionStorage.setItem(TOKEN_KEY, res.token)
+        setToken(res.token)
+        return { success: true }
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: { data?: { error?: string } }
+        }
+        const msg = axiosErr.response?.data?.error ?? 'login_failed'
+        return { success: false, error: msg }
+      }
+    },
+    []
+  )
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated: !!token, token, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated: !!token, token, login, logout }}
+    >
       {children}
     </AuthContext.Provider>
   )
