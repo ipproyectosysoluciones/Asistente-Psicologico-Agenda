@@ -4,10 +4,23 @@ version: '3.8'
 # Nota: PostgreSQL se configura en Railway, no aquí
 
 services:
+  migrate:
+    image: ${DOCKER_HUB_USERNAME}/asistente-psicologico-migrate:latest
+    container_name: asistente-migrate
+    restart: "no"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=production
+    networks:
+      - asistente-network
+
   n8n:
     image: n8nio/n8n:latest
     container_name: asistente-n8n
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678
@@ -42,6 +55,9 @@ services:
     image: ${DOCKER_HUB_USERNAME}/asistente-psicologico-bot:latest
     container_name: asistente-bot
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - DEFAULT_PSYCHOLOGIST_ID=${DEFAULT_PSYCHOLOGIST_ID}

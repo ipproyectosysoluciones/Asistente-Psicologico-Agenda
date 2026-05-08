@@ -41,6 +41,16 @@ jobs:
             type=ref,event=tag
             type=sha,prefix=
 
+      - name: Build and push migrate
+        uses: docker/build-push-action@v5
+        with:
+          context: ./infrastructure
+          dockerfile: ./infrastructure/Dockerfile.migrate
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-migrate:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Build and push bot
         uses: docker/build-push-action@v5
         with:
@@ -66,5 +76,6 @@ jobs:
       - name: Show deployed images
         run: |
           echo "✅ Images deployed to Docker Hub:"
-          echo "   Bot: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot:latest"
+          echo "   Migrate:   ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-migrate:latest"
+          echo "   Bot:       ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-bot:latest"
           echo "   Dashboard: ${{ secrets.DOCKER_HUB_USERNAME }}/asistente-psicologico-dashboard:latest"

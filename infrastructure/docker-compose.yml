@@ -22,6 +22,20 @@ services:
     networks:
       - asistente-network
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
+    container_name: asistente-psicologico-migrate
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-admin}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-asistente_psicologico}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - asistente-network
+
   n8n:
     image: n8nio/n8n:latest
     container_name: asistente-psicologico-n8n
@@ -29,6 +43,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       - N8N_HOST=0.0.0.0
       - N8N_PORT=5678

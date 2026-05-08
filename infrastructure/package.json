@@ -1,0 +1,8 @@
+{
+  "name": "asistente-psicologico-migrate",
+  "version": "1.0.0",
+  "description": "Database migration runner",
+  "dependencies": {
+    "pg": "^8.11.5"
+  }
+}
