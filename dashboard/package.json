@@ -33,9 +33,6 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.6.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
-  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
