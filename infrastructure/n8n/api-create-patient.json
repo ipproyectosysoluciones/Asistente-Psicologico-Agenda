@@ -7,7 +7,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\nreturn $input.item;",
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\nif (!payload.psychologist_id) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\n$input.item.json.jwtPsychologistId = payload.psychologist_id;\n$input.item.json.jwtSub = payload.sub;\n$input.item.json.jwtRole = payload.role;\nreturn $input.item;",
         "options": {}
       },
       "id": "jwt-verify", "name": "Code - JWT Verify", "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [500, 300]
@@ -25,7 +25,7 @@
     },
     {
       "parameters": {
-        "jsCode": "if (!$env.DEFAULT_PSYCHOLOGIST_ID) {\n  return [{ json: { _status: 400, error: 'Server misconfiguration: DEFAULT_PSYCHOLOGIST_ID not set' } }];\n}\n$input.item.json.psychologist_id = $env.DEFAULT_PSYCHOLOGIST_ID;\nreturn $input.item;",
+        "jsCode": "const psychologistId = $input.item.json.jwtPsychologistId;\nif (!psychologistId) {\n  return [{ json: { _status: 400, error: 'psychologist_id claim missing from JWT' } }];\n}\n$input.item.json.psychologist_id = psychologistId;\nreturn $input.item;",
         "options": {
           "onError": "continueErrorOutput"
         }

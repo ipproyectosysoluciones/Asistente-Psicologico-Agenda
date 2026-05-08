@@ -19,11 +19,11 @@
     },
     {
       "parameters": {
-        "jsCode": "const { createHmac } = require('crypto');\nconst body = $input.item.json.body || {};\nconst u = body.username;\nconst p = body.password;\n\nif (!u || !p) {\n  return [{ json: { _status: 400, error: 'missing_credentials' } }];\n}\n\nif (u !== $env.N8N_AUTH_USER || p !== $env.N8N_AUTH_PASS) {\n  return [{ json: { _status: 401, error: 'invalid_credentials' } }];\n}\n\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst exp = now + 28800;\n\nconst b64url = (obj) =>\n  Buffer.from(JSON.stringify(obj)).toString('base64url');\n\nconst header = b64url({ alg: 'HS256', typ: 'JWT' });\nconst payload = b64url({ sub: u, role: 'psychologist', iat: now, exp });\nconst sig = createHmac('sha256', secret)\n  .update(`${header}.${payload}`)\n  .digest('base64url');\n\nconst token = `${header}.${payload}.${sig}`;\n\nreturn [{ json: { _status: 200, token, expiresAt: exp } }];",
+        "jsCode": "const body = $input.first().json.body ?? {};\nconst email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : null;\nconst password = body.password;\n\nif (!email || !password) {\n  return [{ json: { _status: 400, error: 'email and password are required' } }];\n}\n\nreturn [{ json: { email, password } }];",
         "options": {}
       },
       "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
-      "name": "Code - Validate & Sign",
+      "name": "Code - Validate Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [500, 300]
@@ -38,13 +38,13 @@
           },
           "conditions": [
             {
-              "id": "cond-status-200",
+              "id": "cond-status-400",
               "leftValue": "={{ $json._status }}",
               "operator": {
                 "type": "number",
                 "operation": "equals"
               },
-              "rightValue": 200
+              "rightValue": 400
             }
           ],
           "combinator": "and"
@@ -52,7 +52,7 @@
         "options": {}
       },
       "id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
-      "name": "IF - Success",
+      "name": "IF - Bad Request",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [750, 300]
@@ -60,25 +60,7 @@
     {
       "parameters": {
         "options": {
-          "responseCode": 200,
-          "responseData": "={{ JSON.stringify({ token: $json.token, expiresAt: $json.expiresAt }) }}",
-          "responseHeaders": {
-            "entries": [
-              { "name": "Content-Type", "value": "application/json" }
-            ]
-          }
-        }
-      },
-      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
-      "name": "Respond - 200",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [1000, 150]
-    },
-    {
-      "parameters": {
-        "options": {
-          "responseCode": "={{ $json._status }}",
+          "responseCode": 400,
           "responseData": "={{ JSON.stringify({ error: $json.error }) }}",
           "responseHeaders": {
             "entries": [
@@ -87,11 +69,100 @@
           }
         }
       },
-      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
-      "name": "Respond - Error",
+      "id": "respond-400",
+      "name": "Respond - 400",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
+      "position": [1000, 150]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, email, role, is_active\nFROM psychologists\nWHERE email = $1\n  AND password_hash = crypt($2, password_hash)\n  AND is_active = true",
+        "options": {
+          "queryReplacement": "={{ $json.email }},={{ $json.password }}"
+        }
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-234567890123",
+      "name": "PostgreSQL - Auth Query",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
       "position": [1000, 450]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-user-found",
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-345678901234",
+      "name": "IF - User Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 450]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401,
+          "responseData": "={\"error\":\"invalid_credentials\"}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-401",
+      "name": "Respond - 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1500, 650]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac } = require('crypto');\nconst secret = $env.JWT_SECRET;\nconst now = Math.floor(Date.now() / 1000);\nconst exp = now + 28800;\n\nconst b64url = (obj) =>\n  Buffer.from(JSON.stringify(obj)).toString('base64url');\n\nconst header = b64url({ alg: 'HS256', typ: 'JWT' });\nconst payload = b64url({\n  sub: $json.email,\n  psychologist_id: $json.id,\n  role: $json.role || 'psychologist',\n  iat: now,\n  exp\n});\nconst sig = createHmac('sha256', secret)\n  .update(`${header}.${payload}`)\n  .digest('base64url');\n\nconst token = `${header}.${payload}.${sig}`;\n\nreturn [{ json: {\n  token,\n  expires_at: new Date(exp * 1000).toISOString(),\n  psychologist_id: $json.id,\n  role: $json.role || 'psychologist'\n} }];",
+        "options": {}
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-456789012345",
+      "name": "Code - Sign JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 450]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={{ JSON.stringify({ token: $json.token, expires_at: $json.expires_at, psychologist_id: $json.psychologist_id, role: $json.role }) }}",
+          "responseHeaders": {
+            "entries": [
+              { "name": "Content-Type", "value": "application/json" }
+            ]
+          }
+        }
+      },
+      "id": "respond-200",
+      "name": "Respond - 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1750, 450]
     }
   ],
   "connections": {
@@ -99,36 +170,76 @@
       "main": [
         [
           {
-            "node": "Code - Validate & Sign",
+            "node": "Code - Validate Input",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Code - Validate & Sign": {
+    "Code - Validate Input": {
       "main": [
         [
           {
-            "node": "IF - Success",
+            "node": "IF - Bad Request",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "IF - Success": {
+    "IF - Bad Request": {
       "main": [
         [
           {
-            "node": "Respond - 200",
+            "node": "Respond - 400",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Respond - Error",
+            "node": "PostgreSQL - Auth Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PostgreSQL - Auth Query": {
+      "main": [
+        [
+          {
+            "node": "IF - User Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - User Found": {
+      "main": [
+        [
+          {
+            "node": "Code - Sign JWT",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - 401",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Sign JWT": {
+      "main": [
+        [
+          {
+            "node": "Respond - 200",
             "type": "main",
             "index": 0
           }
