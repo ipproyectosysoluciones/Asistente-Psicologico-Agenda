@@ -1,0 +1,542 @@
+{
+  "id": "api-psychologists",
+  "name": "API - Psychologists",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "={{$json.method || 'GET'}}",
+        "path": "psychologists",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { createHmac, timingSafeEqual } = require('crypto');\nconst auth = $input.item.json.headers?.authorization || '';\nconst token = auth.replace(/^Bearer\\s+/i, '').trim();\nconst secret = $env.JWT_SECRET;\nif (!token) { $input.item.json.jwtValid = false; return $input.item; }\nconst parts = token.split('.');\nif (parts.length !== 3) { $input.item.json.jwtValid = false; return $input.item; }\nconst [h, p, s] = parts;\nconst expected = createHmac('sha256', secret).update(`${h}.${p}`).digest('base64url');\nconst eBuf = Buffer.from(expected); const aBuf = Buffer.from(s);\nif (eBuf.length !== aBuf.length || !timingSafeEqual(eBuf, aBuf)) { $input.item.json.jwtValid = false; return $input.item; }\nconst payload = JSON.parse(Buffer.from(p, 'base64url').toString());\nif (payload.exp < Math.floor(Date.now() / 1000)) { $input.item.json.jwtValid = false; return $input.item; }\nif (!payload.psychologist_id) { $input.item.json.jwtValid = false; return $input.item; }\n$input.item.json.jwtValid = true;\n$input.item.json.jwtPsychologistId = payload.psychologist_id;\n$input.item.json.jwtRole = payload.role;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "jwt-verify",
+      "name": "Code - JWT Verify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-jwt-valid",
+              "leftValue": "={{ $json.jwtValid }}",
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-jwt",
+      "name": "IF - JWT válido",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 401,
+          "responseData": "={\"error\":\"Unauthorized\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-401",
+      "name": "Respond 401",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-is-admin",
+              "leftValue": "={{ $json.jwtRole }}",
+              "operator": { "type": "string", "operation": "equals" },
+              "rightValue": "admin"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-admin",
+      "name": "IF - Is Admin",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 403,
+          "responseData": "={\"error\":\"Forbidden\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-403",
+      "name": "Respond 403",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "cond-get",
+                    "leftValue": "={{ $json.method }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "GET"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "cond-post",
+                    "leftValue": "={{ $json.method }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "POST"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "cond-put",
+                    "leftValue": "={{ $json.method }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "PUT"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+                "conditions": [
+                  {
+                    "id": "cond-delete",
+                    "leftValue": "={{ $json.method }}",
+                    "operator": { "type": "string", "operation": "equals" },
+                    "rightValue": "DELETE"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-method",
+      "name": "Switch - Method",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, email, role, is_active, created_at FROM psychologists WHERE is_active = TRUE ORDER BY created_at ASC",
+        "options": {}
+      },
+      "id": "pg-list",
+      "name": "PG - List",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all();\nreturn [{ json: { psychologists: rows.map(r => r.json) } }];",
+        "options": {}
+      },
+      "id": "build-list",
+      "name": "Code - Build List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, 100]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={{ JSON.stringify($json) }}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-200-list",
+      "name": "Respond 200 List",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 100]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || {};\nconst { email, password, role } = body;\nif (!email || !password || !role) {\n  $input.item.json._validationError = 'email, password and role are required';\n  return $input.item;\n}\nif (!['psychologist','admin'].includes(role)) {\n  $input.item.json._validationError = 'role must be psychologist or admin';\n  return $input.item;\n}\n$input.item.json._email = email.trim().toLowerCase();\n$input.item.json._password = password;\n$input.item.json._role = role;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "code-validate-post",
+      "name": "Code - Validate POST",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-no-validation-error",
+              "leftValue": "={{ $json._validationError }}",
+              "operator": { "type": "string", "operation": "empty" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-post-valid",
+      "name": "IF - POST Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 400,
+          "responseData": "={{ JSON.stringify({ error: $json._validationError }) }}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-400",
+      "name": "Respond 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 450]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO psychologists (email, password_hash, role)\nVALUES ($1, crypt($2, gen_salt('bf')), $3)\nRETURNING id, email, role, is_active, created_at",
+        "options": {
+          "queryReplacement": "={{ $json._email }},={{ $json._password }},={{ $json._role }}"
+        }
+      },
+      "id": "pg-insert",
+      "name": "PG - Insert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 201,
+          "responseData": "={{ JSON.stringify($json) }}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-201",
+      "name": "Respond 201",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || {};\nconst params = $input.item.json.params || {};\nconst jwtRole = $input.item.json.jwtRole;\nconst jwtId = $input.item.json.jwtPsychologistId;\nconst targetId = params.id || body.id || '';\n\nconst isAdmin = jwtRole === 'admin';\nconst isSelf = jwtId === targetId;\n\nif (!isAdmin && !isSelf) {\n  $input.item.json._putForbidden = true;\n  return $input.item;\n}\n\n// Strip privileged fields if not admin\nif (!isAdmin) {\n  delete body.role;\n  delete body.is_active;\n}\n\n$input.item.json._targetId = targetId;\n$input.item.json._updateEmail = body.email || null;\n$input.item.json._updatePassword = body.password || null;\n$input.item.json._updateRole = isAdmin ? (body.role || null) : null;\n$input.item.json._updateIsActive = isAdmin ? (body.is_active !== undefined ? body.is_active : null) : null;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "code-validate-put",
+      "name": "Code - Validate PUT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-put-not-forbidden",
+              "leftValue": "={{ $json._putForbidden }}",
+              "operator": { "type": "boolean", "operation": "false" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-put-allowed",
+      "name": "IF - PUT Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1750, 500]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 403,
+          "responseData": "={\"error\":\"Forbidden\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-403-put",
+      "name": "Respond 403 PUT",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 650]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE psychologists SET\n  email       = COALESCE($2, email),\n  password_hash = CASE WHEN $3 IS NOT NULL THEN crypt($3, gen_salt('bf')) ELSE password_hash END,\n  role        = COALESCE($4, role),\n  is_active   = COALESCE($5, is_active),\n  updated_at  = NOW()\nWHERE id = $1::uuid AND is_active = TRUE\nRETURNING id, email, role, is_active",
+        "options": {
+          "queryReplacement": "={{ $json._targetId }},={{ $json._updateEmail }},={{ $json._updatePassword }},={{ $json._updateRole }},={{ $json._updateIsActive }}"
+        }
+      },
+      "id": "pg-update",
+      "name": "PG - Update",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2000, 500]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={{ JSON.stringify($json) }}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-200-put",
+      "name": "Respond 200 PUT",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2250, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS admin_count FROM psychologists WHERE role = 'admin' AND is_active = TRUE",
+        "options": {
+          "queryReplacement": ""
+        }
+      },
+      "id": "pg-admin-guard",
+      "name": "PG - Admin Guard",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 700]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.item.json;\nconst adminCount = parseInt(row.admin_count, 10);\nconst params = $('Switch - Method').item.json.params || {};\nconst body = $('Switch - Method').item.json.body || {};\nconst targetId = params.id || body.id || '';\nconst jwtRole = $('Switch - Method').item.json.jwtRole;\n// Get the target psychologist's current role to determine if it's the last admin\n$input.item.json._adminCount = adminCount;\n$input.item.json._targetId = targetId;\nreturn $input.item;",
+        "options": {}
+      },
+      "id": "code-delete-check",
+      "name": "Code - Delete Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1750, 700]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT role FROM psychologists WHERE id = $1::uuid AND is_active = TRUE",
+        "options": {
+          "queryReplacement": "={{ $json._targetId }}"
+        }
+      },
+      "id": "pg-get-target-role",
+      "name": "PG - Get Target Role",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2000, 700]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "cond-last-admin",
+              "leftValue": "={{ $('Code - Delete Check').item.json._adminCount <= 1 && $json.role === 'admin' }}",
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-last-admin",
+      "name": "IF - Last Admin",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2250, 700]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 409,
+          "responseData": "={\"error\":\"Cannot deactivate last active admin\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-409",
+      "name": "Respond 409",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2500, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE psychologists SET is_active = FALSE, updated_at = NOW() WHERE id = $1::uuid RETURNING id, email, role, is_active",
+        "options": {
+          "queryReplacement": "={{ $('Code - Delete Check').item.json._targetId }}"
+        }
+      },
+      "id": "pg-soft-delete",
+      "name": "PG - Soft Delete",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2500, 800]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "={\"message\":\"Psychologist deactivated\"}",
+          "responseHeaders": { "entries": [{ "name": "Content-Type", "value": "application/json" }] }
+        }
+      },
+      "id": "respond-200-delete",
+      "name": "Respond 200 Delete",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2750, 800]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Code - JWT Verify", "type": "main", "index": 0 }]]
+    },
+    "Code - JWT Verify": {
+      "main": [[{ "node": "IF - JWT válido", "type": "main", "index": 0 }]]
+    },
+    "IF - JWT válido": {
+      "main": [
+        [{ "node": "IF - Is Admin", "type": "main", "index": 0 }],
+        [{ "node": "Respond 401", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF - Is Admin": {
+      "main": [
+        [{ "node": "Switch - Method", "type": "main", "index": 0 }],
+        [{ "node": "Respond 403", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch - Method": {
+      "main": [
+        [{ "node": "PG - List", "type": "main", "index": 0 }],
+        [{ "node": "Code - Validate POST", "type": "main", "index": 0 }],
+        [{ "node": "Code - Validate PUT", "type": "main", "index": 0 }],
+        [{ "node": "PG - Admin Guard", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - List": {
+      "main": [[{ "node": "Code - Build List", "type": "main", "index": 0 }]]
+    },
+    "Code - Build List": {
+      "main": [[{ "node": "Respond 200 List", "type": "main", "index": 0 }]]
+    },
+    "Code - Validate POST": {
+      "main": [[{ "node": "IF - POST Valid", "type": "main", "index": 0 }]]
+    },
+    "IF - POST Valid": {
+      "main": [
+        [{ "node": "PG - Insert", "type": "main", "index": 0 }],
+        [{ "node": "Respond 400", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Insert": {
+      "main": [[{ "node": "Respond 201", "type": "main", "index": 0 }]]
+    },
+    "Code - Validate PUT": {
+      "main": [[{ "node": "IF - PUT Allowed", "type": "main", "index": 0 }]]
+    },
+    "IF - PUT Allowed": {
+      "main": [
+        [{ "node": "PG - Update", "type": "main", "index": 0 }],
+        [{ "node": "Respond 403 PUT", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Update": {
+      "main": [[{ "node": "Respond 200 PUT", "type": "main", "index": 0 }]]
+    },
+    "PG - Admin Guard": {
+      "main": [[{ "node": "Code - Delete Check", "type": "main", "index": 0 }]]
+    },
+    "Code - Delete Check": {
+      "main": [[{ "node": "PG - Get Target Role", "type": "main", "index": 0 }]]
+    },
+    "PG - Get Target Role": {
+      "main": [[{ "node": "IF - Last Admin", "type": "main", "index": 0 }]]
+    },
+    "IF - Last Admin": {
+      "main": [
+        [{ "node": "Respond 409", "type": "main", "index": 0 }],
+        [{ "node": "PG - Soft Delete", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Soft Delete": {
+      "main": [[{ "node": "Respond 200 Delete", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
