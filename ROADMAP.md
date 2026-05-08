@@ -104,25 +104,31 @@
 
 ---
 
-## 🔴 Pendientes
-
-### Dashboard
-- [ ] **M-01** · `tsconfig.json jsx: "react-compiler"` → debe ser `"react-jsx"`
-- [ ] **L-05** · Botones CTA de landing sin `href` ni `onClick`
+## 🟡 Pendientes (verificados 2026-05-08)
 
 ### Infraestructura / DevOps
-- [ ] **M-06** · `update_updated_at()` definida dos veces en `init-db.sql`
-- [ ] **M-07** · `Prognosis` con mayúscula en `init-db.sql`
-- [x] **M-09** · `bot-compose.yml` sin `DATABASE_URL` ni `DEFAULT_PSYCHOLOGIST_ID` — resuelto en hotfix
-- [ ] **M-12** · `PGPASSWORD` faltante en `backup.sh` — backup silencioso falla
-- [ ] **M-13** · Doble compresión en `backup.sh` (`-Fc` + gzip)
-- [ ] **L-09** · `bot-compose.yml` con `network_mode: host` incompatible con bridge
+- [ ] **L-01** · `.env.template` — verificar presencia de `GOOGLE_SHEET_ID`, `NOTIFICATION_EMAIL` y `ALERT_WEBHOOK_URL` (acceso restringido, verificar manualmente)
+
+---
+
+## ✅ Issues cerrados (verificados como resueltos 2026-05-08)
+
+### Dashboard
+- [x] **M-01** · `tsconfig.json jsx: "react-jsx"` — ya correcto
+- [x] **L-05** · Botones CTA con `href` — ya presentes en LandingPage.tsx
+
+### Infraestructura / DevOps
+- [x] **M-06** · `update_updated_at()` — solo una definición en `init-db.sql` (línea 399)
+- [x] **M-07** · `prognosis` minúscula en `init-db.sql` — ya correcto
+- [x] **M-09** · `bot-compose.yml` — `DATABASE_URL` y `DEFAULT_PSYCHOLOGIST_ID` presentes (hotfix)
+- [x] **M-12** · `backup.sh` — `PGPASSWORD` presente (Sprint 7b)
+- [x] **M-13** · `backup.sh` — solo `-Fc`, sin gzip (Sprint 7b)
+- [x] **L-09** · `bot-compose.yml` — sin `network_mode: host`
 
 ### Deuda técnica
-- [ ] **L-01** · `.env.template` sin `GOOGLE_SHEET_ID` ni `NOTIFICATION_EMAIL`
-- [ ] **L-02** · `registrationSimpleFlow` y `newPatientKeywordFlow` son código muerto
-- [ ] **L-03** · `consentFlow` y `dataRequestFlow` exportados pero nunca registrados
-- [ ] **L-07** · Carácter cirílico `оператор` en template email de paciente
+- [x] **L-02** · `registrationSimpleFlow`/`newPatientKeywordFlow` — no existen en bot/src
+- [x] **L-03** · `consentFlow`/`dataRequestFlow` — no registrados (eliminados del codebase)
+- [x] **L-07** · Carácter cirílico `оператор` — no presente en ningún archivo
 
 ---
 
