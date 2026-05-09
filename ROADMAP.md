@@ -1,7 +1,7 @@
 # Roadmap — Asistente Psicológico Agenda
 
-**Última actualización**: 2026-05-08 (Sprint 6a)  
-**Estado**: MVP en producción en Railway  
+**Última actualización**: 2026-05-09 (Phase 5 W18-20 — v2.0.0)  
+**Estado**: Phase 5 COMPLETA — Production-ready en Railway  
 **Rama de desarrollo**: `dev` → `release` → `main`
 
 ---
@@ -86,6 +86,21 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Phase 5 W18-20 — Production Hardening (2026-05-09) — [PR #114](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/114) — v2.0.0
+- [x] **5.11b** · `CompliancePage.tsx` — LFPDPPP, Ley 1581, RGPD actualizados a `implemented` post Sprint 8b ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
+- [x] **5.13** · `encryption-review.md` + migración 011 — inventario PII, bcrypt status, brechas Phase 6 documentadas ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
+- [x] **5.14** · `disaster-recovery.md` — RTO < 2h, RPO < 24h, 5 escenarios de recuperación ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
+- [x] **5.15** · Migración 012 — 11 índices compuestos parciales (appointments, patients, HC, leads) ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
+- [x] **5.16** · `k6-load-test.js` — script 1000 usuarios concurrentes, stages ramp-up, thresholds p(95)<2s ([#112](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/112))
+- [x] **5.17** · `security-audit-owasp.md` — OWASP A01-A10 con estado y acciones pendientes pre-launch ([#112](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/112))
+- [x] **5.18** · `pentest-validation.md` — guía pentest: JWT, SQLi, XSS, cross-tenant, brute force ([#112](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/112))
+- [x] **5.19** · `production-deployment-checklist.md` — checklist 3 fases, seguridad, DB, rollback ([#112](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/112))
+- [x] **5.20** · `ops-troubleshooting.md` — 6 escenarios frecuentes, queries diagnóstico, Railway commands ([#112](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/112))
+- [x] **5.21** · `CompliancePage.test.tsx` — 4 tests nuevos, **15 tests totales pasando** ([#113](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/113))
+- [x] **5.22/5.24** · `docs/onboarding-psychologist.md` — guía completa para psicólogos ([#113](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/113))
+- [x] **5.23** · `infrastructure/runbooks/monitoring-setup.md` — Railway metrics, alertas, logging ([#113](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/113))
+- [x] **5.25** · `docs/launch-checklist.md` — checklist v2.0.0, smoke tests, métricas de éxito ([#113](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/113))
+
 ### Sprint 8b — GDPR Export Completo + Retention Policy (2026-05-08) — [PR #110](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/110) — v1.10.0
 - [x] **REQ-GDPR-02** · `api-gdpr-export.json` — 13 subqueries `json_build_object`, exporta todas las secciones HC con campos completos ([#109](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/109))
 - [x] **REQ-MIGRATION-02** · Migración 010 — `retention_years INTEGER NOT NULL DEFAULT 5` en `psychologists` (idempotente) ([#109](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/109))
@@ -162,4 +177,7 @@
 | PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas (008 aplicada) |
 | CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy |
 | Automatizaciones | ✅ Funcional | Workflows activos, bugs n8n resueltos Sprint 6a |
-| Seguridad | ✅ Hardened | JWT + tenant isolation + rate limiting (7a); RBAC + audit + GDPR (7b) |
+| Seguridad | ✅ Production-ready | JWT + tenant isolation + rate limiting + RBAC + audit + GDPR + OWASP audit (Phase 5) |
+| Compliance | ✅ Implementado | LFPDPPP/Ley1581/RGPD implementados; HIPAA parcial (Phase 6: cifrado en reposo) |
+| Documentación | ✅ Completo | DR runbook, pentest guide, onboarding, monitoring, launch checklist |
+| Tests | ✅ 15 tests | AuthContext + AdminGuard + PsychologistsPage + CompliancePage |
