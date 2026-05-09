@@ -275,17 +275,18 @@ let _instance = null
  */
 function _getInstance() {
     if (!_instance) {
-        const pool = new Pool({
-            host: process.env.PGHOST,
-            user: process.env.PGUSER,
-            database: process.env.PGDATABASE,
-            password: process.env.PGPASSWORD,
-            port: parseInt(process.env.PGPORT || '5432', 10),
-            max: 3,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000,
-        })
+        // Prefer DATABASE_URL (Railway) over individual vars
+        const poolConfig = process.env.DATABASE_URL
+            ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
+            : {
+                host: process.env.PGHOST,
+                user: process.env.PGUSER,
+                database: process.env.PGDATABASE,
+                password: process.env.PGPASSWORD,
+                port: parseInt(process.env.PGPORT || '5432', 10),
+            }
 
+        const pool = new Pool({ ...poolConfig, max: 3, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 })
         _instance = createRAGService({ db: pool, aiService })
     }
     return _instance
