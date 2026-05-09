@@ -72,17 +72,10 @@ Reemplazado por paginación paramétrica (`$1`/`$2`/`$3`) con soporte de status 
 
 ---
 
-### C-08 · n8n: Referencias de nodos rotas en `agendamiento-flow.json`
+### ✅ C-08 · n8n: Referencias de nodos rotas en `agendamiento-flow.json` — RESUELTO
 
-**Archivo**: `infrastructure/n8n/agendamiento-flow.json` líneas 139 y 156  
-**Rama sugerida**: `feature/fix-n8n-agendamiento-flow`
-
-```json
-"node": "Email - No Disponible"   // nodo real: "Gmail - No Disponible"
-"node": "Email - Confirmación"    // nodo real: "Gmail - Confirmación"
-```
-
-El flujo se detiene después de verificar disponibilidad — las citas nunca se crean y no se envía confirmación.
+**Resuelto en**: verificado 2026-05-09  
+Conexiones usan `"Gmail - No Disponible"` y `"Gmail - Confirmación"` correctamente.
 
 ---
 
@@ -169,43 +162,24 @@ Pool requiere `DATABASE_URL` obligatoriamente (lanza error si no está definido)
 
 ---
 
-### H-07 · SQL Injection en `whatsapp-new-patient.json`
+### ✅ H-07 · SQL Injection en `whatsapp-new-patient.json` — RESUELTO
 
-**Archivo**: `infrastructure/n8n/whatsapp-new-patient.json` línea 21  
-**Rama sugerida**: `feature/fix-sql-injection-n8n`
-
-```sql
--- Interpolación directa sin parametrización:
-VALUES ('{{$json.body.first_name}}', '{{$json.body.last_name}}', ...)
-```
-
-Un nombre como `O'Brien` rompe la query. `'); DROP TABLE patients; --` es explotable.
+**Resuelto en**: verificado 2026-05-09  
+Usa `$1, $2, $3, $4, $5` con `queryReplacement` (parámetros posicionales). Sin interpolación directa.
 
 ---
 
-### H-08 · SQL Injection en `agendamiento-flow.json`
+### ✅ H-08 · SQL Injection en `agendamiento-flow.json` — RESUELTO
 
-**Archivo**: `infrastructure/n8n/agendamiento-flow.json` línea 62  
-**Rama sugerida**: `feature/fix-sql-injection-n8n`
-
-```sql
-VALUES (..., '{{$json.body.email}}', {{$json.body.duration}}, ...)
--- duration sin comillas: valor malicioso puede ejecutar SQL arbitrario
-```
+**Resuelto en**: verificado 2026-05-09  
+Disponibilidad: `$1, $2` / INSERT: `$1::uuid, $2, $3::timestamptz, $4::integer, $5, $6` vía `queryReplacement`.
 
 ---
 
-### H-09 · SQL Injection + UUIDs sin comillas en `google-sheets-sync.json`
+### ✅ H-09 · SQL Injection + UUIDs en `google-sheets-sync.json` — RESUELTO
 
-**Archivo**: `infrastructure/n8n/google-sheets-sync.json` línea 81  
-**Rama sugerida**: `feature/fix-sql-injection-n8n`
-
-```sql
--- PROBLEMA: UUIDs sin comillas → error de sintaxis
-WHERE id IN ({{ $json.map(x => x.id).join(',') }})
--- CORRECTO:
-WHERE id IN ({{ $json.map(x => `'${x.id}'`).join(',') }})
-```
+**Resuelto en**: verificado 2026-05-09  
+SELECT estático con `NOW() - INTERVAL '1 hour'` — sin interpolación de input de usuario. La cláusula `WHERE id IN (...)` con UUIDs fue eliminada en refactor previo.
 
 ---
 
@@ -292,13 +266,10 @@ El bot requiere ambas variables de entorno para funcionar. Sin ellas usa credenc
 
 ---
 
-### M-11 · `$json.length` siempre es `undefined` en nodo Postgres de n8n
+### ✅ M-11 · `$json.length` siempre es `undefined` en nodo Postgres de n8n — RESUELTO
 
-**Archivo**: `infrastructure/n8n/google-sheets-sync.json` línea 46  
-```json
-"value1": "={{ $json.length }}"  // en n8n Postgres, $json es una fila, no un array
-```
-La condición IF nunca es `true` → la sincronización con Google Sheets nunca dispara.
+**Resuelto en**: verificado 2026-05-09  
+IF condition ahora usa `$json.fecha` con `isNotEmpty` — comprueba que la fila tenga datos.
 
 ---
 
@@ -364,10 +335,10 @@ Los botones "Escribinos por WhatsApp" y "Agendar Cita" no tienen `href` ni `onCl
 
 ---
 
-### L-07 · Carácter cirílico `оператор` en template de email de paciente
+### ✅ L-07 · Carácter cirílico `оператор` en template de email de paciente — RESUELTO
 
-**Archivo**: `infrastructure/n8n/whatsapp-new-patient.json` línea 34  
-Artefacto de copy-paste. Se renderiza como texto corrupto en el email del paciente.
+**Resuelto en**: verificado 2026-05-09  
+El email usa "Un operador te contactará pronto" en español correcto. Sin caracteres cirílicos.
 
 ---
 
@@ -396,26 +367,22 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 
 | Severidad | Total | Resueltos | Pendientes |
 |-----------|-------|-----------|------------|
-| 🔴 Crítico | 12 | 8 | 4 (C-06, C-08, C-09, C-11) |
-| 🟠 Alto | 10 | 7 | 3 (H-07, H-08, H-09) |
-| 🟡 Medio | 14 | 7 | 7 |
-| 🔵 Bajo | 10 | 5 | 5 |
-| **Total** | **46** | **24** (52%) | **22** |
+| 🔴 Crítico | 12 | 9 | 3 (C-06, C-09, C-11) |
+| 🟠 Alto | 10 | 10 | 0 |
+| 🟡 Medio | 14 | 9 | 5 |
+| 🔵 Bajo | 10 | 6 | 4 |
+| **Total** | **46** | **34** (74%) | **12** |
 
 ## Pendientes prioritarios (próxima sesión)
 
-### 🔥 Urgente — Seguridad
-- H-07, H-08, H-09 · SQL Injection en 3 workflows n8n → parametrizar con `$1`/`$2`
-
 ### 🔴 Críticos funcionales
 - C-06 · `$body.xxx` inválido en `api-create-appointment.json`
-- C-08 · Referencias de nodos rotas en `agendamiento-flow.json`
 - C-09 · `$json.appointmentId` null en `confirmacion.json`
 - C-11 · INSERT falta `psychologist_id` en `api-create-patient.json`
 
-### ✅ Altos funcionales
-- H-10 · API client dashboard — RESUELTO (axios en uso, `fetch` eliminado)
-
 ### 🟡 Medios
+- M-01 · `jsx: "react-compiler"` inválido en tsconfig.json
 - M-03 · Password en console.log
+- M-06 · `update_updated_at()` definida dos veces en init-db.sql
+- M-07 · Columna `Prognosis` con mayúscula en init-db.sql
 - M-12/M-13 · backup.sh PGPASSWORD + doble compresión
