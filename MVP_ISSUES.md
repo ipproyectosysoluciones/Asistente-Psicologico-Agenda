@@ -398,7 +398,7 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 
 | Severidad | Total | Resueltos | Pendientes |
 |-----------|-------|-----------|------------|
-| 🔴 Crítico | 12 | 9 | 3 (C-06, C-08, C-09, C-11) |
+| 🔴 Crítico | 12 | 8 | 4 (C-06, C-08, C-09, C-11) |
 | 🟠 Alto | 10 | 6 | 4 (H-07, H-08, H-09, H-10) |
 | 🟡 Medio | 14 | 7 | 7 |
 | 🔵 Bajo | 10 | 5 | 5 |

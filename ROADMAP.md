@@ -86,6 +86,21 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Sprint W21 — AI Layer: GPT-4o + RAG + Triage (2026-05-09) — PRs [#124](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/124) [#125](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/125) [#126](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/126)
+- [x] **W21.1** · `aiService.js` — wrapper GPT-4o (`complete`, `completeJSON`, `embed`) con guardrails clínicos en BASE_SYSTEM_PROMPT; singleton proxy con `OPENAI_API_KEY`
+- [x] **W21.2** · `ragService.js` — factory + singleton; `answer()` (embed → cosine search pgvector `<=>` threshold 0.25 → GPT-4o) + `ingest()` (PDF → chunks 375 palabras/38 overlap → embeddings); cache SHA-256 TTL 1h
+- [x] **W21.3** · `knowledgeBase.js` — RAG-first con fallback a `bot_faq`; fuentes mostradas como `basename`
+- [x] **W21.4** · `ingestPdfs.js` — script one-shot; **45 PDFs indexados → 2 616 chunks** en `knowledge_embeddings` (skipped=0)
+- [x] **W21.5** · `distressDetector.js` — función pura `detect(text)`, 3 keyword lists + 5 regex, zero I/O
+- [x] **W21.6** · `triageService.js` — factory + singleton; `nextTurn()` PHQ-9 conversacional (GPT-4o), `finalize()` (score → urgency 4 niveles), `saveAssessment()`, `hasUpcomingAppointment()`
+- [x] **W21.7** · `triageFlow` + `emergencyFlow` — EVENTS.ACTION + capture loop; severe → emergencyFlow con línea de crisis
+- [x] **W21.8** · `mainMenu.js` — `distressGuard()` en los 3 keywords; distress + sin cita → triage; distress + con cita → mensaje empático
+- [x] **W21.9** · Migration 013 — `knowledge_embeddings` + pgvector `vector(1536)` + IVFFlat cosine index (lists=100)
+- [x] **W21.10** · Migration 014 — `triage_assessments` con FK a `patients` + `psychologists`, `phq9_score CHECK(0-27)`, urgency_level CHECK
+- [x] **W21.11** · CI/CD fix — Docker tags válidos en PRs (`type=ref,event=pr`; SHA tag deshabilitado en PRs)
+- [x] **53 tests bot** (total acumulado: 68 tests — 15 dashboard + 53 bot); 16/16 spec compliance scenarios
+- [x] **Issues cerrados**: [#122](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/122) (PR2 RAG) · [#123](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/123) (PR3 Triage)
+
 ### Phase 5 W18-20 — Production Hardening (2026-05-09) — [PR #114](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/114) — v2.0.0
 - [x] **5.11b** · `CompliancePage.tsx` — LFPDPPP, Ley 1581, RGPD actualizados a `implemented` post Sprint 8b ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
 - [x] **5.13** · `encryption-review.md` + migración 011 — inventario PII, bcrypt status, brechas Phase 6 documentadas ([#111](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/111))
@@ -171,13 +186,14 @@
 
 | Área | Estado | Notas |
 |------|--------|-------|
-| Bot WhatsApp | ✅ Funcional | Booking + cancelación + FAQ |
+| Bot WhatsApp | ✅ Funcional | Booking + cancelación + FAQ + RAG psicoeducación + PHQ-9 triage conversacional |
+| AI Layer | ✅ Operativo | GPT-4o (aiService) + RAG pgvector (ragService) + Triage PHQ-9 (triageService); 45 PDFs → 2 616 chunks indexados |
 | n8n API | ✅ Funcional | APIs CRUD OK; tenant isolation + DB-backed auth (Sprint 7a) |
 | Dashboard | ✅ Funcional | Auth server-side JWT, HC, paginación OK |
-| PostgreSQL | ✅ Estable | Schema completo, migraciones trackeadas (008 aplicada) |
-| CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy |
+| PostgreSQL | ✅ Estable | Schema completo, migraciones 001-014 trackeadas; pgvector + knowledge_embeddings + triage_assessments |
+| CI/CD | ✅ Verde | 3 imágenes Docker Hub, Railway auto-deploy; Docker tags válidos en PRs (W21) |
 | Automatizaciones | ✅ Funcional | Workflows activos, bugs n8n resueltos Sprint 6a |
 | Seguridad | ✅ Production-ready | JWT + tenant isolation + rate limiting + RBAC + audit + GDPR + OWASP audit (Phase 5) |
 | Compliance | ✅ Implementado | LFPDPPP/Ley1581/RGPD implementados; HIPAA parcial (Phase 6: cifrado en reposo) |
 | Documentación | ✅ Completo | DR runbook, pentest guide, onboarding, monitoring, launch checklist |
-| Tests | ✅ 15 tests | AuthContext + AdminGuard + PsychologistsPage + CompliancePage |
+| Tests | ✅ 68 tests | 15 dashboard (AuthContext + AdminGuard + PsychologistsPage + CompliancePage) + 53 bot (aiService + ragService + triageService + distressDetector + utils) |

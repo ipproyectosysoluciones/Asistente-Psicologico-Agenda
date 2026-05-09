@@ -13,6 +13,8 @@
 - [ ] PostgreSQL con backup automático habilitado
 - [ ] Variables de entorno de producción configuradas (ver `.env.template`)
 - [ ] `JWT_SECRET` rotado (generar nuevo): `openssl rand -hex 32`
+- [ ] `OPENAI_API_KEY` configurado en Railway (requerido — bot crashea sin esta variable)
+- [ ] `CRISIS_HOTLINE` configurado (default: `106 (Bogotá) / 192 (Línea Nacional Colombia)`)
 - [ ] Contraseña admin por defecto cambiada
 
 ### Código
@@ -28,6 +30,9 @@
   - [ ] `010_retention_policy.sql`
   - [ ] `011_encryption_comments.sql`
   - [ ] `012_performance_indexes.sql`
+  - [ ] `013_pgvector_embeddings.sql` (pgvector + knowledge_embeddings — Sprint W21)
+  - [ ] `014_triage_assessments.sql` (PHQ-9 triage — Sprint W21)
+- [ ] `ingestPdfs.js` ejecutado una vez en producción (45 PDFs → knowledge_embeddings) — **ya ejecutado en Railway 2026-05-09** ✅
 - [ ] Backup manual tomado: `pg_dump $DATABASE_URL > pre-launch-backup.sql`
 - [ ] Psicólogos de producción creados con contraseñas seguras
 

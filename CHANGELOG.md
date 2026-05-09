@@ -6,7 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — dev branch
 
-### Added
+### Added (Sprint W21 — AI Layer: GPT-4o + RAG + Triage, 2026-05-09)
+- `aiService.js` — wrapper GPT-4o: `complete()`, `completeJSON()`, `embed()`; guardrails clínicos en BASE_SYSTEM_PROMPT (no diagnostica, no trata, no medica); singleton proxy lazy-init con `OPENAI_API_KEY`
+- `ragService.js` — RAG full: embed query → pgvector cosine search (threshold 0.25) → GPT-4o con contexto; caché SHA-256 TTL 1h; `ingest()` para PDFs (chunk 375 palabras/38 solapamiento); personalisation regex → redirect a agendar
+- `distressDetector.js` — función pura `detect(text)` sin I/O; 3 keyword lists + 5 regex para angustia/crisis
+- `triageService.js` — PHQ-9 conversacional via GPT-4o: `nextTurn()`, `finalize()` (score → 4 niveles urgencia), `saveAssessment()`, `hasUpcomingAppointment()`; guard `newStep >= 9` anti-loop
+- `triageFlow` + `emergencyFlow` — flujos BuilderBot; severe → emergencyFlow con línea de crisis
+- `distressGuard()` en `mainMenu.js` — aplicado a keywords hola/AYUDA/MENU; distress + sin cita → triage; distress + con cita → mensaje empático
+- `knowledgeBase.js` — RAG-first con fallback a `bot_faq`
+- `ingestPdfs.js` — script one-shot batch ingestion; 45 PDFs → 2 616 chunks (0 skipped) en Railway
+- Migration 013 — tabla `knowledge_embeddings` + extensión pgvector + índice IVFFlat cosine (lists=100)
+- Migration 014 — tabla `triage_assessments` con FK patients/psychologists + CHECK constraints
+- 53 nuevos tests bot (total: 68 tests pasando — 15 dashboard + 53 bot); 16/16 spec compliance
+
+### Fixed (Sprint W21)
+- CI/CD: Docker tags inválidos en PRs — `type=ref,event=pr` + SHA tag deshabilitado en `pull_request` events
+- `ragService`/`triageService` singletons: DATABASE_URL preferido sobre variables individuales PG (Railway)
+
+### Added (pre-W21)
 - Real pagination in appointments and patients APIs (`page`, `limit`, `total_count`, `total_pages`)
 - `COUNT(*) OVER()` window function for total count without extra DB query
 - Pagination controls (Anterior/Siguiente) in dashboard tables
