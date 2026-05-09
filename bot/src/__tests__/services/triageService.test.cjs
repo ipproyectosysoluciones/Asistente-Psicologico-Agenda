@@ -1,6 +1,6 @@
 'use strict'
 
-const { test, describe, before } = require('node:test')
+const { test, describe } = require('node:test')
 const assert = require('node:assert/strict')
 
 // ── Mock factories ────────────────────────────────────────────────────────────
@@ -80,6 +80,20 @@ describe('triageService.nextTurn', () => {
 
         assert.equal(result.done, true, 'done must be true when AI signals done')
         assert.equal(result.newState.step, 9, 'step must advance to 9')
+    })
+
+    test('step=9 with AI done:false → forced done=true by newStep >= 9 guard', async () => {
+        const { createTriageService } = await import('../../services/triageService.js')
+
+        // AI incorrectly returns done:false on step 9
+        const aiResponse = { next_question: 'Una más...', extracted_score: 1, step: 9, done: false }
+        const svc = createTriageService({ db: makeMockDB(), aiService: makeMockAIService(aiResponse) })
+
+        const currentState = { step: 8, responses: Array(8).fill('sí'), scores: Array(8).fill(1) }
+        const result = await svc.nextTurn({ phone: '+57123', userText: 'sí', currentState })
+
+        assert.equal(result.done, true, 'done must be forced true when newStep >= 9 regardless of AI response')
+        assert.equal(result.newState.step, 9)
     })
 
     test('completeJSON returns {} (error) → returns safe fallback question, does NOT throw', async () => {
@@ -189,6 +203,22 @@ describe('triageService.saveAssessment', () => {
         })
 
         assert.ok(insertCalled, 'db INSERT must be called')
+    })
+
+    test('DB throws → error is silenced, does NOT throw', async () => {
+        const { createTriageService } = await import('../../services/triageService.js')
+
+        const errorDB = { async query() { throw new Error('connection refused') } }
+        const svc = createTriageService({ db: errorDB, aiService: makeMockAIService() })
+
+        await assert.doesNotReject(async () => {
+            await svc.saveAssessment({
+                phone: '+57123456789',
+                scores: [1, 1, 1, 1, 1, 0, 0, 0, 0],
+                urgency: 'mild',
+                recommendedAction: 'Se recomienda hablar con un profesional.',
+            })
+        }, 'saveAssessment must not throw even when DB fails')
     })
 })
 
