@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
-RUN corepack enable pnpm && pnpm install --frozen-lockfile --ignore-scripts
+RUN npm install -g pnpm@10 && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . ./
 
