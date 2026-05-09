@@ -1,0 +1,403 @@
+{
+  "id": "cron-retention",
+  "name": "CRON - Retention Policy Enforcement",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT DISTINCT p.id\nFROM patients p\nJOIN appointments a ON a.patient_id = p.id\nJOIN psychologists ps ON ps.id = p.psychologist_id\nWHERE p.deleted_at IS NULL\n  AND a.deleted_at IS NULL\n  AND COALESCE(\n    (SELECT MAX(scheduled_at) FROM appointments WHERE patient_id = p.id AND deleted_at IS NULL),\n    p.created_at\n  ) < NOW() - MAKE_INTERVAL(years => ps.retention_years)",
+        "options": {}
+      },
+      "id": "pg-find-expired",
+      "name": "PG - Find Expired Patients",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-patients",
+              "leftValue": "={{ $input.all().length }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-patients",
+      "name": "IF - Has Patients",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect patient IDs as PostgreSQL array literal: {uuid1,uuid2,...}\nconst ids = $input.all().map(r => r.json.id);\nconst pgArray = '{' + ids.join(',') + '}';\nreturn [{ json: { patient_ids: pgArray } }];",
+        "options": {}
+      },
+      "id": "code-extract-ids",
+      "name": "Code - Extract IDs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE patients\nSET deleted_at = NOW(),\n    first_name = 'REDACTED',\n    last_name = 'REDACTED',\n    email = NULL,\n    phone = NULL,\n    updated_at = NOW()\nWHERE id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-anonymize-patients",
+      "name": "PG - Anonymize Patients",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE demographics\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-demographics",
+      "name": "PG - HC isCurrentFalse demographics",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE chief_complaint\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-chief-complaint",
+      "name": "PG - HC isCurrentFalse chief_complaint",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE personal_history\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-personal-history",
+      "name": "PG - HC isCurrentFalse personal_history",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE family_history\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-family-history",
+      "name": "PG - HC isCurrentFalse family_history",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE developmental_history\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-developmental-history",
+      "name": "PG - HC isCurrentFalse developmental_history",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1500, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE psychological_evaluation\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-psychological-evaluation",
+      "name": "PG - HC isCurrentFalse psychological_evaluation",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE diagnosis\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-diagnosis",
+      "name": "PG - HC isCurrentFalse diagnosis",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE treatment_plan\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-treatment-plan",
+      "name": "PG - HC isCurrentFalse treatment_plan",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mental_status_exam\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-mental-status-exam",
+      "name": "PG - HC isCurrentFalse mental_status_exam",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 400]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE social_profile\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-social-profile",
+      "name": "PG - HC isCurrentFalse social_profile",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1750, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE personality_profile\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-personality-profile",
+      "name": "PG - HC isCurrentFalse personality_profile",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2000, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE clinical_impression\nSET is_current = FALSE, updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-hc-clinical-impression",
+      "name": "PG - HC isCurrentFalse clinical_impression",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2000, 350]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE consentimientos\nSET status = 'revoked', updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-revoke-consentimientos",
+      "name": "PG - Revoke Consentimientos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2250, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE appointments\nSET deleted_at = NOW(), updated_at = NOW()\nWHERE patient_id = ANY($1::uuid[])\n  AND deleted_at IS NULL",
+        "options": {
+          "queryReplacement": "={{ $json.patient_ids }}"
+        }
+      },
+      "id": "pg-soft-delete-appointments",
+      "name": "PG - Soft Delete Appointments",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [2250, 350]
+    },
+    {
+      "parameters": {
+        "jsCode": "// No patients qualify for retention — workflow ends here.\n// Phase 6 gap: audit_log.old_data retains PII indefinitely after anonymization.\n// This is a known limitation documented for Phase 6 remediation.\nreturn [];",
+        "options": {}
+      },
+      "id": "code-no-op",
+      "name": "Code - No Expired Patients",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 450]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [{ "node": "PG - Find Expired Patients", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Find Expired Patients": {
+      "main": [
+        [{ "node": "IF - Has Patients", "type": "main", "index": 0 }]
+      ]
+    },
+    "IF - Has Patients": {
+      "main": [
+        [{ "node": "Code - Extract IDs", "type": "main", "index": 0 }],
+        [{ "node": "Code - No Expired Patients", "type": "main", "index": 0 }]
+      ]
+    },
+    "Code - Extract IDs": {
+      "main": [
+        [{ "node": "PG - Anonymize Patients", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Anonymize Patients": {
+      "main": [
+        [
+          { "node": "PG - HC isCurrentFalse demographics", "type": "main", "index": 0 },
+          { "node": "PG - HC isCurrentFalse chief_complaint", "type": "main", "index": 0 },
+          { "node": "PG - HC isCurrentFalse personal_history", "type": "main", "index": 0 },
+          { "node": "PG - HC isCurrentFalse family_history", "type": "main", "index": 0 },
+          { "node": "PG - HC isCurrentFalse developmental_history", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "PG - HC isCurrentFalse demographics": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse psychological_evaluation", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse chief_complaint": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse diagnosis", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse personal_history": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse treatment_plan", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse family_history": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse mental_status_exam", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse developmental_history": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse social_profile", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse psychological_evaluation": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse personality_profile", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse diagnosis": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse personality_profile", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse treatment_plan": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse clinical_impression", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse mental_status_exam": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse clinical_impression", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse social_profile": {
+      "main": [
+        [{ "node": "PG - HC isCurrentFalse clinical_impression", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse personality_profile": {
+      "main": [
+        [{ "node": "PG - Revoke Consentimientos", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - HC isCurrentFalse clinical_impression": {
+      "main": [
+        [{ "node": "PG - Soft Delete Appointments", "type": "main", "index": 0 }]
+      ]
+    },
+    "PG - Revoke Consentimientos": {
+      "main": []
+    },
+    "PG - Soft Delete Appointments": {
+      "main": []
+    },
+    "Code - No Expired Patients": {
+      "main": []
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
