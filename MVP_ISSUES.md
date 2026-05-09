@@ -209,12 +209,10 @@ WHERE id IN ({{ $json.map(x => `'${x.id}'`).join(',') }})
 
 ---
 
-### H-10 · Dashboard: `fetch()` ignora la opción `baseURL` silenciosamente
+### ✅ H-10 · Dashboard: `fetch()` ignora la opción `baseURL` silenciosamente — RESUELTO
 
-**Archivos**: `DashboardPage.tsx`, `AppointmentsPage.tsx`, `PatientsPage.tsx`, `LeadsPage.tsx`  
-**Rama sugerida**: `feature/fix-dashboard-api-client`
-
-`baseURL` es una opción de Axios, no de `fetch()`. La variable `VITE_API_URL` no tiene ningún efecto. El cliente `api` de axios en `lib/api.ts` nunca se usa.
+**Resuelto en**: Sprint 6a-8a (verificado 2026-05-09)  
+`lib/api.ts` usa `axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' })`. Todos los pages (`DashboardPage`, `AppointmentsPage`, `PatientsPage`, `LeadsPage`, `AuthContext`) importan `api from '@/lib/api'` y usan el cliente axios. `fetch()` eliminado de todos los componentes.
 
 ---
 
@@ -399,7 +397,7 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 | Severidad | Total | Resueltos | Pendientes |
 |-----------|-------|-----------|------------|
 | 🔴 Crítico | 12 | 8 | 4 (C-06, C-08, C-09, C-11) |
-| 🟠 Alto | 10 | 6 | 4 (H-07, H-08, H-09, H-10) |
+| 🟠 Alto | 10 | 7 | 3 (H-07, H-08, H-09) |
 | 🟡 Medio | 14 | 7 | 7 |
 | 🔵 Bajo | 10 | 5 | 5 |
 | **Total** | **46** | **24** (52%) | **22** |
@@ -415,8 +413,8 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 - C-09 · `$json.appointmentId` null en `confirmacion.json`
 - C-11 · INSERT falta `psychologist_id` en `api-create-patient.json`
 
-### 🟠 Altos funcionales
-- H-10 · API client dashboard (`fetch` ignora `baseURL`, axios no se usa)
+### ✅ Altos funcionales
+- H-10 · API client dashboard — RESUELTO (axios en uso, `fetch` eliminado)
 
 ### 🟡 Medios
 - M-03 · Password en console.log
