@@ -86,6 +86,11 @@
 - [x] **REQ-CHART-01** · Gráfico de tendencias de citas (AreaChart recharts, últimas 8 semanas) ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 - [x] **REQ-CHART-02** · `api-stats.json` extendido con `weekly_appointments` breakdown ([#98](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/98))
 
+### Sprint 8b — GDPR Export Completo + Retention Policy (2026-05-08) — [PR #110](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/110) — v1.10.0
+- [x] **REQ-GDPR-02** · `api-gdpr-export.json` — 13 subqueries `json_build_object`, exporta todas las secciones HC con campos completos ([#109](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/109))
+- [x] **REQ-MIGRATION-02** · Migración 010 — `retention_years INTEGER NOT NULL DEFAULT 5` en `psychologists` (idempotente) ([#109](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/109))
+- [x] **REQ-CRON-01** · `cron-retention.json` — Schedule Trigger `0 2 * * *`, soft-delete + PII null-out + 12 tablas HC `is_current=FALSE` + consentimientos `status='revoked'` ([#109](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/109))
+
 ### Sprint 8a — Admin Dashboard + AdminGuard + Compliance Page (2026-05-08) — [PR #108](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/pull/108) — v1.9.0
 - [x] **REQ-AUTH-03** · `AuthContext.tsx` — decode JWT client-side, expone `jwtRole: 'admin' | 'psychologist' | null` + `jwtPsychologistId: string | null` ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
 - [x] **REQ-ADMIN-01** · `AdminGuard.tsx` — gate fail-closed, redirige a `/dashboard` si role ≠ admin ([#107](https://github.com/ipproyectosysoluciones/Asistente-Psicologico-Agenda/issues/107))
