@@ -1,7 +1,8 @@
 import 'dotenv/config'
 import { mkdirSync } from 'fs'
 import { createServer } from 'http'
-import { createBot, createProvider, createFlow, addKeyword, MemoryDB } from '@builderbot/bot'
+import { createBot, createProvider, createFlow, addKeyword } from '@builderbot/bot'
+import { PostgreSQLAdapter } from '@builderbot/database-postgres'
 import { BaileysProvider } from '@builderbot/provider-baileys'
 
 async function fetchWaVersion() {
@@ -55,7 +56,13 @@ const main = async () => {
     console.log('📍 Health:', HEALTH_PORT, '| API:', BOT_API_PORT, '| Host:', HOST)
     console.log(`📂 Session path: ${AUTH_PATH}`)
 
-    const database = new MemoryDB()
+    const database = new PostgreSQLAdapter({
+        host: process.env.PGHOST || 'localhost',
+        user: process.env.PGUSER || 'postgres',
+        database: process.env.PGDATABASE || 'railway',
+        password: process.env.PGPASSWORD || '',
+        port: parseInt(process.env.PGPORT || '5432', 10),
+    })
 
     const waPhone = process.env.WA_PHONE_NUMBER
     if (waPhone) {
