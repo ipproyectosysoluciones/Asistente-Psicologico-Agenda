@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { addKeyword } from '@builderbot/bot'
 import { knowledgeService } from '../services/knowledgeBase.js'
 import { ragService } from '../services/ragService.js'
@@ -81,7 +82,7 @@ export const searchFlow = addKeyword(['buscar', 'search'])
                 if (ragResult !== null) {
                     const sourceLine =
                         ragResult.sources.length > 0
-                            ? `\n\n_Fuentes: ${ragResult.sources.join(', ')}_`
+                            ? `\n\n_Fuentes: ${ragResult.sources.map(s => path.basename(s, path.extname(s))).join(', ')}_`
                             : ''
                     await flowDynamic(`${ragResult.answer}${sourceLine}`)
                     return

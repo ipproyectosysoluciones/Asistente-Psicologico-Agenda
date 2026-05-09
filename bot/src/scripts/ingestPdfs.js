@@ -52,7 +52,10 @@ try {
 import { ragService } from '../services/ragService.js'
 
 const TAG = '[ingestPdfs]'
-const LIBROS_PATH = process.env.LIBROS_PATH || path.join(process.cwd(), 'Libros')
+// Resolve relative to the repo root (3 levels up from bot/src/scripts/) so the
+// default works regardless of where `node` is invoked from.
+const REPO_ROOT = path.resolve(__dirname, '..', '..', '..')
+const LIBROS_PATH = process.env.LIBROS_PATH || path.join(REPO_ROOT, 'Libros')
 
 /**
  * Recopila recursivamente todos los archivos `.pdf` bajo un directorio raíz.

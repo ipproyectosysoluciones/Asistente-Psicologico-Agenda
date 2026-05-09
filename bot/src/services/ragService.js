@@ -96,10 +96,12 @@ function cacheKey(query) {
  * Creates a RAG service instance with injected dependencies.
  * Follows the factory pattern to enable testing with mocks.
  *
- * @param {{ db: object, aiService: object, cache?: Map<string, {value: any, expiresAt: number}> }} deps
+ * @param {{ db: object, aiService: object, cache?: Map<string, {value: any, expiresAt: number}>, _pdfParse?: Function, _readFile?: Function }} deps
  * @param {object} deps.db - Adaptador de base de datos con método `query` / DB adapter with `query` method.
  * @param {object} deps.aiService - Instancia del AI service / AI service instance.
  * @param {Map} [deps.cache] - Cache Map opcional; si no se provee se crea uno interno / Optional cache Map; internal one created if omitted.
+ * @param {Function} [deps._pdfParse] - Override de pdf-parse para testing / pdf-parse override for testing.
+ * @param {Function} [deps._readFile] - Override de fs.readFile para testing / fs.readFile override for testing.
  * @returns {object} Instancia del servicio RAG / RAG service instance.
  */
 export function createRAGService({ db, aiService: injectedAIService, cache, _pdfParse, _readFile } = {}) {
@@ -177,7 +179,7 @@ export function createRAGService({ db, aiService: injectedAIService, cache, _pdf
                 `SELECT chunk_text, source_path,
                         (embedding <=> $1::vector) AS distance
                  FROM knowledge_embeddings
-                 ORDER BY embedding <=> $1::vector
+                 ORDER BY 3
                  LIMIT 5`,
                 [vectorLiteral]
             )

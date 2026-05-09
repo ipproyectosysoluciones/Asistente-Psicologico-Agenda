@@ -172,4 +172,67 @@ describe('ragService.ingest', () => {
         assert.ok(mockAI.embedCallCount > 0, 'embed must be called for each chunk')
         assert.ok(mockDB.queryCallCount > 0, 'DB must be queried for each embedded chunk')
     })
+
+    test('ON CONFLICT (duplicate chunk) increments skipped, not inserted', async () => {
+        const { createRAGService } = await import('../../services/ragService.js')
+        const mockAI = makeMockAIService()
+        const mockDB = {
+            async query(sql) {
+                if (sql.trim().toUpperCase().startsWith('INSERT')) {
+                    return { rows: [], rowCount: 0 } // ON CONFLICT DO NOTHING → rowCount 0
+                }
+                return { rows: [], rowCount: 0 }
+            },
+        }
+        const fakeText = Array(400).fill('palabra').join(' ')
+        const svc = createRAGService({
+            db: mockDB,
+            aiService: mockAI,
+            _readFile: async () => Buffer.from('dummy'),
+            _pdfParse: async () => ({ text: fakeText }),
+        })
+
+        const result = await svc.ingest({ filePath: '/fake/libro.pdf', category: 'test' })
+
+        assert.equal(result.inserted, 0, 'Nothing should be inserted on full conflict')
+        assert.ok(result.skipped > 0, 'All chunks should be counted as skipped')
+    })
+
+    test('embed failure for a chunk increments skipped and continues', async () => {
+        const { createRAGService } = await import('../../services/ragService.js')
+        let callCount = 0
+        const mockAI = {
+            embedCallCount: 0,
+            async embed() {
+                this.embedCallCount++
+                // Fail every other chunk
+                return callCount++ % 2 === 0 ? [] : new Array(1536).fill(0.1)
+            },
+            async complete() { return '' },
+        }
+        const mockDB = {
+            insertCount: 0,
+            async query(sql) {
+                if (sql.trim().toUpperCase().startsWith('INSERT')) {
+                    this.insertCount++
+                    return { rows: [], rowCount: 1 }
+                }
+                return { rows: [], rowCount: 0 }
+            },
+        }
+        // Enough words for at least 2 chunks (375 words per chunk)
+        const fakeText = Array(800).fill('palabra').join(' ')
+        const svc = createRAGService({
+            db: mockDB,
+            aiService: mockAI,
+            _readFile: async () => Buffer.from('dummy'),
+            _pdfParse: async () => ({ text: fakeText }),
+        })
+
+        const result = await svc.ingest({ filePath: '/fake/libro.pdf', category: 'test' })
+
+        assert.ok(result.skipped > 0, 'Failed embed chunks must be counted as skipped')
+        assert.ok(result.inserted > 0, 'Successful embed chunks must still be inserted')
+        assert.equal(result.inserted + result.skipped, mockAI.embedCallCount, 'Total chunks = inserted + skipped')
+    })
 })
