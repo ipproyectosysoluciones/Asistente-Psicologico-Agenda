@@ -1,5 +1,6 @@
 import { addKeyword } from '@builderbot/bot'
 import { knowledgeService } from '../services/knowledgeBase.js'
+import { ragService } from '../services/ragService.js'
 
 const CATEGORY_LABELS = {
     horarios: 'Horarios',
@@ -73,6 +74,23 @@ export const searchFlow = addKeyword(['buscar', 'search'])
         { capture: true },
         async (ctx, { flowDynamic }) => {
             const input = ctx.body.toLowerCase().trim()
+
+            // Try RAG first — returns null when score < threshold or embed fails
+            try {
+                const ragResult = await ragService.answer(input)
+                if (ragResult !== null) {
+                    const sourceLine =
+                        ragResult.sources.length > 0
+                            ? `\n\n_Fuentes: ${ragResult.sources.join(', ')}_`
+                            : ''
+                    await flowDynamic(`${ragResult.answer}${sourceLine}`)
+                    return
+                }
+            } catch {
+                // RAG error — fall through to category-based lookup
+            }
+
+            // Fallback: existing category match → bot_faq lookup
             const matched = Object.keys(CATEGORY_LABELS).find(cat => input.includes(cat))
 
             if (!matched) {
