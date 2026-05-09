@@ -51,17 +51,10 @@
 
 ---
 
-### C-06 · n8n: `$body.xxx` no es sintaxis SQL válida en nodo Postgres
+### ✅ C-06 · n8n: `$body.xxx` no es sintaxis SQL válida en nodo Postgres — RESUELTO
 
-**Archivo**: `infrastructure/n8n/api-create-appointment.json` línea ~50  
-**Rama sugerida**: `feature/fix-n8n-postgres-params`
-
-```sql
--- PROBLEMA: $body.patient_id no es un parámetro SQL válido en n8n
-VALUES (..., $body.patient_id, $body.scheduled_at, ...)
-```
-
-Toda creación de citas falla con error SQL. Usar `={{ $json.body.patient_id }}` o `$1, $2...`.
+**Resuelto en**: verificado 2026-05-09  
+INSERT usa `$1::uuid, $2::uuid, $3::timestamptz, $4::integer, $5` con `queryReplacement` → `$json.jwtPsychologistId, $json.body.patient_id, ...`. Ownership check previo garantiza que el paciente pertenece al psicólogo del JWT.
 
 ---
 
@@ -79,17 +72,10 @@ Conexiones usan `"Gmail - No Disponible"` y `"Gmail - Confirmación"` correctame
 
 ---
 
-### C-09 · n8n: `$json.appointmentId` siempre es null en confirmacion.json
+### ✅ C-09 · n8n: `$json.appointmentId` siempre es null en confirmacion.json — RESUELTO
 
-**Archivo**: `infrastructure/n8n/confirmacion.json` líneas 81 y 106  
-**Rama sugerida**: `feature/fix-n8n-confirmacion`
-
-```sql
--- PROBLEMA: el email de respuesta no contiene appointmentId
-WHERE id = '{{ $json.appointmentId }}'  -- siempre null → 0 rows afectadas
-```
-
-El sistema de confirmación/cancelación por email es completamente no funcional.
+**Resuelto en**: verificado 2026-05-09  
+Webhook path `confirm/:appointmentId` → `Code - Parsear` extrae `$input.item.json.params.appointmentId` → queries usan `$1::uuid` con `queryReplacement`. Flujo confirmar/cancelar completamente funcional.
 
 ---
 
@@ -100,18 +86,10 @@ Además se corrigió la columna `start_time` → `scheduled_at` y el filtro de s
 
 ---
 
-### C-11 · n8n: INSERT en `api-create-patient.json` omite `psychologist_id` NOT NULL
+### ✅ C-11 · n8n: INSERT en `api-create-patient.json` omite `psychologist_id` NOT NULL — RESUELTO
 
-**Archivo**: `infrastructure/n8n/api-create-patient.json` línea ~20  
-**Rama sugerida**: `feature/fix-n8n-create-patient`
-
-```sql
--- PROBLEMA: psychologist_id es NOT NULL en el schema
-INSERT INTO patients (first_name, last_name, email, phone, ...)
--- FALTA: psychologist_id
-```
-
-Toda creación de pacientes desde el dashboard falla con violación de constraint.
+**Resuelto en**: verificado 2026-05-09  
+`Code - Inject Psychologist ID` extrae `jwtPsychologistId` del JWT y lo pone en `$json.psychologist_id`. INSERT incluye `$1::uuid` para `psychologist_id`. Con guard 400 si falta el claim en el JWT.
 
 ---
 
@@ -367,18 +345,13 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 
 | Severidad | Total | Resueltos | Pendientes |
 |-----------|-------|-----------|------------|
-| 🔴 Crítico | 12 | 9 | 3 (C-06, C-09, C-11) |
-| 🟠 Alto | 10 | 10 | 0 |
+| 🔴 Crítico | 12 | **12** | **0** ✅ |
+| 🟠 Alto | 10 | **10** | **0** ✅ |
 | 🟡 Medio | 14 | 9 | 5 |
 | 🔵 Bajo | 10 | 6 | 4 |
-| **Total** | **46** | **34** (74%) | **12** |
+| **Total** | **46** | **37** (80%) | **9** |
 
-## Pendientes prioritarios (próxima sesión)
-
-### 🔴 Críticos funcionales
-- C-06 · `$body.xxx` inválido en `api-create-appointment.json`
-- C-09 · `$json.appointmentId` null en `confirmacion.json`
-- C-11 · INSERT falta `psychologist_id` en `api-create-patient.json`
+## Pendientes (próxima sesión)
 
 ### 🟡 Medios
 - M-01 · `jsx: "react-compiler"` inválido en tsconfig.json
@@ -386,3 +359,9 @@ Con `network_mode: host`, el bot no puede alcanzar los contenedores de postgres 
 - M-06 · `update_updated_at()` definida dos veces en init-db.sql
 - M-07 · Columna `Prognosis` con mayúscula en init-db.sql
 - M-12/M-13 · backup.sh PGPASSWORD + doble compresión
+
+### 🔵 Bajos
+- L-01 · `.env.template` sin `GOOGLE_SHEET_ID` ni `NOTIFICATION_EMAIL`
+- L-02 · `registrationSimpleFlow`/`newPatientKeywordFlow` — código muerto
+- L-03 · `consentFlow`/`dataRequestFlow` exportados pero nunca registrados
+- L-05 · Botones CTA en LandingPage sin acción
