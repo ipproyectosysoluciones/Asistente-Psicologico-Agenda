@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom'
 import { Link } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Users, UserPlus, LogOut, Send } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, UserPlus, LogOut, Send, ShieldCheck, Users2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,8 +12,13 @@ const NAV = [
   { to: '/leads', label: 'Leads', icon: UserPlus }
 ] as const
 
+const ADMIN_NAV = [
+  { to: '/admin/psychologists', label: 'Psicólogos', icon: Users2 },
+  { to: '/admin/compliance', label: 'Compliance', icon: ShieldCheck },
+] as const
+
 export default function DashboardLayout() {
-  const { logout } = useAuth()
+  const { logout, jwtRole } = useAuth()
 
   function handleLogout() {
     logout()
@@ -49,6 +54,31 @@ export default function DashboardLayout() {
               {label}
             </NavLink>
           ))}
+
+          {jwtRole === 'admin' && (
+            <>
+              <div className="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Administración
+              </div>
+              {ADMIN_NAV.map(({ to, label, icon: Icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                    )
+                  }
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </NavLink>
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="border-t px-6 py-4 space-y-3">
